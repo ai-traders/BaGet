@@ -19,19 +19,20 @@ namespace BaGet.Web.Controllers
 
             // TODO: Client is picky about versions' formatting. Needs more research. See:
             // https://github.com/NuGet/NuGet.Client/blob/67d34ee8158597377fb26e06987ad6ad40a1b09b/src/NuGet.Core/NuGet.Protocol/Constants.cs
+            string version = "3.0.0";
             return new
             {
-                Version = "3.0.0-beta.1",
+                Version = version,
                 Resources = new[]
                 {
                     // Required
-                    new ServiceResource("PackagePublish/Versioned", Url.PackagePublish()),
-                    new ServiceResource("SearchQueryService/Versioned", Url.PackageSearch()),
-                    new ServiceResource("RegistrationsBaseUrl/Versioned", Url.RegistrationsBase()),
-                    new ServiceResource("PackageBaseAddress/Versioned", Url.PackageBase()),
+                    new ServiceResource("PackagePublish/" + version, Url.PackagePublish()),
+                    new ServiceResource("SearchQueryService/" + version, Url.PackageSearch()),
+                    new ServiceResource("RegistrationsBaseUrl/" + "3.6.0", Url.RegistrationsBase()),
+                    new ServiceResource("PackageBaseAddress/" + version, Url.PackageBase()),
 
                     // Optional
-                    new ServiceResource("SearchAutocompleteService/Versioned", Url.PackageAutocomplete()),
+                    new ServiceResource("SearchAutocompleteService/" + version, Url.PackageAutocomplete()),
                     //new ServiceResource("ReportAbuseUriTemplate/3.0.0-rc", new Uri("https://google.com")),
                     //new ServiceResource("Catalog/3.0.0", new Uri("https://google.com"))
                 }
