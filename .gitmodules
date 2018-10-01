@@ -1,0 +1,3 @@
+[submodule "e2e/nuget.org"]
+	path = e2e/nuget.org
+	url = https://github.com/ai-traders/NuGet.Services.EndToEnd.git
