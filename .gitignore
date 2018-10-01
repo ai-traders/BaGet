@@ -279,3 +279,4 @@ __pycache__/
 /e2e/**/*.dll
 
 /imagerc*
+/src/BaGet/Packages/
