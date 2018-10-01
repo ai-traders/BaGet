@@ -55,6 +55,12 @@ case "${command}" in
     rm -rf e2e/data/packages/*
     ide --idefile Idefile.e2e-docker "./e2e/run.sh"
     ;;
+  all)
+    ide "./tasks.sh _build && ./tasks.sh _unit_test"
+    ./tasks.sh unit_test
+    ./tasks.sh build_docker
+    ./tasks.sh test_docker
+    ;;
   prepare_code_release)
     version=$2
     if [[ -z "$version" ]]; then
