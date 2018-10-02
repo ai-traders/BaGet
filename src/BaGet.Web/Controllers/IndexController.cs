@@ -34,6 +34,8 @@ namespace BaGet.Web.Controllers
                     ServiceWithAliases("PackagePublish", Url.PackagePublish(), "2.0.0") // api.nuget.org returns this too.
                     .Concat(ServiceWithAliases("SearchQueryService", Url.PackageSearch(), "", "3.0.0-beta", "3.0.0-rc")) // each version is an alias of others
                     .Concat(ServiceWithAliases("RegistrationsBaseUrl", Url.RegistrationsBase(), "", "3.0.0-rc", "3.0.0-beta"))
+                    .Concat(new [] {  new ServiceResource(
+                        "RegistrationsBaseUrl/Versioned", Url.RegistrationsBase()) { ClientVersion = "4.3.0-alpha" } }) // needed by nuget.org e2e tests
                     .Concat(ServiceWithAliases("PackageBaseAddress", Url.PackageBase(), "3.0.0"))
                     .Concat(ServiceWithAliases("SearchAutocompleteService", Url.PackageAutocomplete(), "", "3.0.0-rc", "3.0.0-beta"))
                     .ToList()
@@ -54,6 +56,9 @@ namespace BaGet.Web.Controllers
 
             [JsonProperty(PropertyName = "@type")]
             public string Type { get; }
+
+            [JsonProperty(PropertyName = "clientVersion")]
+            public string ClientVersion { get;set; }
 
             public string Comment { get; }
         }
