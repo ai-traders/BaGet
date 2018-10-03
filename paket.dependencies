@@ -19,6 +19,7 @@ nuget Microsoft.Extensions.Options.ConfigurationExtensions
 nuget morelinq
 nuget NuGet.Client
 nuget NuGet.Packaging
+nuget NuGet.Protocol
 nuget WindowsAzure.Storage
 nuget NuGet.Protocol
 nuget carter
