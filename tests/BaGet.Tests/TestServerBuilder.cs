@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Moq;
 using Xunit.Abstractions;
 
 namespace BaGet.Tests
@@ -27,10 +28,12 @@ namespace BaGet.Tests
         private readonly string StorageTypeKey = $"{nameof(BaGetOptions.Storage)}:{nameof(StorageOptions.Type)}";
         private readonly string FileSystemStoragePathKey = $"{nameof(BaGetOptions.Storage)}:{nameof(FileSystemStorageOptions.Path)}";
         private readonly string SearchTypeKey = $"{nameof(BaGetOptions.Search)}:{nameof(SearchOptions.Type)}";
+
         private readonly string MirrorEnabledKey = $"{nameof(BaGetOptions.Mirror)}:{nameof(MirrorOptions.Enabled)}";
 
         private ITestOutputHelper _helper;
         private LogLevel _minimumLevel = LogLevel.None;
+        private Action<IServiceCollection> configureTestServices = _ => {};
 
         /// <summary>
         /// private/hidden Constructor.
@@ -39,6 +42,26 @@ namespace BaGet.Tests
         private TestServerBuilder()
         {
             Configuration = new Dictionary<string, string>();
+        }
+
+        public TestServerBuilder WithMock<T>(Type serviceType, Mock<T> serviceMock) where T: class
+        {
+            if (serviceType == null)
+            {
+                throw new ArgumentNullException(nameof(serviceType));
+            }
+
+            if (serviceMock == null)
+            {
+                throw new ArgumentNullException(nameof(serviceMock));
+            }
+
+            var previous = configureTestServices;
+            configureTestServices = services => {
+                previous(services);
+                services.AddSingleton(serviceType, serviceMock.Object);
+            };
+            return this;
         }
 
         /// <summary>
@@ -95,7 +118,8 @@ namespace BaGet.Tests
             IConfigurationBuilder configurationBuilder = new ConfigurationBuilder().AddInMemoryCollection(Configuration);
             IWebHostBuilder hostBuilder = new WebHostBuilder()
                 .UseConfiguration(configurationBuilder.Build())
-                .UseStartup<Startup>();
+                .UseStartup(typeof(Startup))
+                .ConfigureTestServices(configureTestServices);
 
             if (_helper != null)
             {
