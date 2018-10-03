@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Reflection;
 using BaGet.Azure.Configuration;
 using BaGet.Azure.Extensions;
 using BaGet.Azure.Search;
@@ -11,7 +13,9 @@ using BaGet.Core.Extensions;
 using BaGet.Core.Mirror;
 using BaGet.Core.Services;
 using BaGet.Entities;
+using BaGet.Web.Controllers;
 using Carter;
+using FluentValidation;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Cors.Infrastructure;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -98,9 +102,71 @@ namespace BaGet.Extensions
             return services;
         }
 
+        public static void AddCarter(this IServiceCollection services)
+        {
+            //PATCH around same issues as in https://github.com/CarterCommunity/Carter/pull/88
+            // we rather just explicitly state assembly with modules to fix loading issues.
+            var assemblies = new [] { typeof(IndexModule).Assembly };
+
+            CarterDiagnostics diagnostics = new CarterDiagnostics();
+            services.AddSingleton(diagnostics);
+
+            var validators = assemblies.SelectMany(ass => ass.GetTypes())
+                .Where(typeof(IValidator).IsAssignableFrom)
+                .Where(t => !t.GetTypeInfo().IsAbstract);
+
+            foreach (var validator in validators)
+            {
+                diagnostics.AddValidator(validator);
+                services.AddSingleton(typeof(IValidator), validator);
+            }
+
+            services.AddSingleton<IValidatorLocator, DefaultValidatorLocator>();
+
+            services.AddRouting();
+
+            var modules = assemblies.SelectMany(x => x.GetTypes()
+                .Where(t =>
+                    !t.IsAbstract &&
+                    typeof(CarterModule).IsAssignableFrom(t) &&
+                    t != typeof(CarterModule) &&
+                    t.IsPublic
+                ));
+
+            foreach (var module in modules)
+            {
+                diagnostics.AddModule(module);
+                services.AddScoped(module);
+                services.AddScoped(typeof(CarterModule), module);
+            }
+
+            var schs = assemblies.SelectMany(x => x.GetTypes().Where(t => typeof(IStatusCodeHandler).IsAssignableFrom(t) && t != typeof(IStatusCodeHandler)));
+            foreach (var sch in schs)
+            {
+                diagnostics.AddStatusCodeHandler(sch);
+                services.AddScoped(typeof(IStatusCodeHandler), sch);
+            }
+
+            var responseNegotiators = assemblies.SelectMany(x => x.GetTypes()
+                .Where(t =>
+                    !t.IsAbstract &&
+                    typeof(IResponseNegotiator).IsAssignableFrom(t) &&
+                    t != typeof(IResponseNegotiator) &&
+                    t != typeof(DefaultJsonResponseNegotiator)
+                ));
+
+            foreach (var negotiatator in responseNegotiators)
+            {
+                diagnostics.AddResponseNegotiator(negotiatator);
+                services.AddSingleton(typeof(IResponseNegotiator), negotiatator);
+            }
+
+            services.AddSingleton<IResponseNegotiator, DefaultJsonResponseNegotiator>();
+        }
+
         public static IServiceCollection ConfigureHttpServices(this IServiceCollection services)
         {
-            services.AddCarter();
+            AddCarter(services);
             services.AddMvc().AddApplicationPart(typeof(BaGet.Web.Routes).Assembly);
             services.AddCors();
             services.AddSingleton<IConfigureOptions<CorsOptions>, ConfigureCorsOptions>();
