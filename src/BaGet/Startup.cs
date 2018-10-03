@@ -64,8 +64,7 @@ namespace BaGet
             {
                 routes
                     .MapPackagePublishRoutes()
-                    .MapSearchRoutes()
-                    .MapRegistrationRoutes();
+                    .MapSearchRoutes();
             });
         }
     }
