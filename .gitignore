@@ -280,3 +280,6 @@ __pycache__/
 
 /imagerc*
 /src/BaGet/Packages/
+/e2e/.paket/paket.bootstrapper.exe.config
+/e2e/test_update-package/paket-constraint/paket.lock
+/e2e/test_update-package/paket/paket.lock
