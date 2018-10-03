@@ -20,12 +20,13 @@ namespace BaGet.Controllers
         private readonly IPackageStorageService _storage;
 
         public PackageModule(IMirrorService mirror, IPackageService packageService, IPackageStorageService storage)
+            :base("v3/package")
         {
             _mirror = mirror ?? throw new ArgumentNullException(nameof(mirror));
             _packages = packageService ?? throw new ArgumentNullException(nameof(packageService));
             _storage = storage ?? throw new ArgumentNullException(nameof(storage));
 
-            this.Get("v3/package/{id}/index.json", async (req, res, routeData) => {
+            this.Get("/{id}/index.json", async (req, res, routeData) => {
                 string id = routeData.As<string>("id");
                 var packages = await _packages.FindAsync(id);
 
@@ -41,7 +42,7 @@ namespace BaGet.Controllers
                 });
             });
 
-            this.Get("v3/package/{id}/{version}/{idVersion}.nupkg", async (req, res, routeData) => {
+            this.Get("/{id}/{version}/{idVersion}.nupkg", async (req, res, routeData) => {
                 string id = routeData.As<string>("id");
                 string version = routeData.As<string>("version");
 
@@ -66,7 +67,7 @@ namespace BaGet.Controllers
                 await res.FromStream(packageStream, "application/octet-stream");
             });
 
-            this.Get("v3/package/{id}/{version}/{id2}.nuspec", async (req, res, routeData) => {
+            this.Get("/{id}/{version}/{id2}.nuspec", async (req, res, routeData) => {
                 string id = routeData.As<string>("id");
                 string version = routeData.As<string>("version");
 
@@ -90,7 +91,7 @@ namespace BaGet.Controllers
                 await res.FromStream(await _storage.GetNuspecStreamAsync(identity), "text/xml");
             });
 
-            this.Get("v3/package/{id}/{version}/readme", async (req, res, routeData) => {
+            this.Get("/{id}/{version}/readme", async (req, res, routeData) => {
                 string id = routeData.As<string>("id");
                 string version = routeData.As<string>("version");
 
