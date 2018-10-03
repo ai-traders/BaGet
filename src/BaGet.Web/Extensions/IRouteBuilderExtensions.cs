@@ -51,20 +51,5 @@ namespace BaGet.Web.Extensions
 
             return routes;
         }
-
-        public static IRouteBuilder MapRegistrationRoutes(this IRouteBuilder routes)
-        {
-            routes.MapRoute(
-               name: Routes.RegistrationIndexRouteName,
-               template: "v3/registration/{id}/index.json",
-               defaults: new { controller = "RegistrationIndex", action = "Get" });
-
-            routes.MapRoute(
-                name: Routes.RegistrationLeafRouteName,
-                template: "v3/registration/{id}/{version}.json",
-                defaults: new { controller = "RegistrationLeaf", action = "Get" });
-
-            return routes;
-        }
     }
 }
