@@ -93,8 +93,7 @@ namespace BaGet
                 routes
                     .MapPackagePublishRoutes()
                     .MapSearchRoutes()
-                    .MapRegistrationRoutes()
-                    .MapPackageContentRoutes();
+                    .MapRegistrationRoutes();
             });
 
             if(env.IsDevelopment()) 

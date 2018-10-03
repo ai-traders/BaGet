@@ -66,30 +66,5 @@ namespace BaGet.Web.Extensions
 
             return routes;
         }
-
-        public static IRouteBuilder MapPackageContentRoutes(this IRouteBuilder routes)
-        {
-            routes.MapRoute(
-                name: Routes.PackageVersionsRouteName,
-                template: "v3/package/{id}/index.json",
-                defaults: new { controller = "Package", action = "Versions" });
-
-            routes.MapRoute(
-                name: Routes.PackageDownloadRouteName,
-                template: "v3/package/{id}/{version}/{idVersion}.nupkg",
-                defaults: new { controller = "Package", action = "DownloadPackage" });
-
-            routes.MapRoute(
-                name: Routes.PackageDownloadManifestRouteName,
-                template: "v3/package/{id}/{version}/{id2}.nuspec",
-                defaults: new { controller = "Package", action = "DownloadNuspec" });
-
-            routes.MapRoute(
-                name: Routes.PackageDownloadReadmeRouteName,
-                template: "v3/package/{id}/{version}/readme",
-                defaults: new { controller = "Package", action = "DownloadReadme" });
-
-            return routes;
-        }
     }
 }
