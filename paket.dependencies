@@ -20,6 +20,8 @@ nuget morelinq
 nuget NuGet.Client
 nuget NuGet.Packaging
 nuget WindowsAzure.Storage
+nuget NuGet.Protocol
+nuget carter
 
 group Tools
   source https://api.nuget.org/v3/index.json
@@ -48,3 +50,5 @@ group Test
   nuget Microsoft.Extensions.Logging
   nuget Microsoft.Extensions.Logging.Abstractions
   nuget Microsoft.Extensions.Logging.Configuration
+  nuget NuGet.Protocol
+  nuget carter

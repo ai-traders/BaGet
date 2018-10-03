@@ -1,4 +1,5 @@
 ﻿using System;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using NuGet.Versioning;
 
@@ -49,5 +50,20 @@ namespace BaGet.Web.Extensions
 
         public static string AbsoluteRouteUrl(this IUrlHelper url, string routeName, object routeValues = null)
             => url.RouteUrl(routeName, routeValues, url.ActionContext.HttpContext.Request.Scheme);
+    }
+
+    public static class CarterUrlExtensions
+    {
+        public static string PackageBase(this HttpRequest request) => request.AbsoluteUrl("v3/package/");
+        public static string RegistrationsBase(this HttpRequest request) => request.AbsoluteUrl("v3/registration/");
+
+        public static string PackagePublish(this HttpRequest request) => request.AbsoluteUrl("v2/package");
+        public static string PackageSearch(this HttpRequest request) => request.AbsoluteUrl("v3/search");
+        public static string PackageAutocomplete(this HttpRequest request) => request.AbsoluteUrl("v3/autocomplete");
+
+        public static string AbsoluteUrl(this HttpRequest request, string relativePath)
+        {
+            return new Uri(new Uri(request.Scheme + "://" + request.Host.Value), relativePath).ToString();
+        }
     }
 }

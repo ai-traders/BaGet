@@ -4,6 +4,7 @@ using BaGet.Core.Configuration;
 using BaGet.Core.Entities;
 using BaGet.Extensions;
 using BaGet.Web.Extensions;
+using Carter;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
@@ -58,10 +59,10 @@ namespace BaGet
 
             app.UseCors(ConfigureCorsOptions.CorsPolicy);
 
+            app.UseCarter();
             app.UseMvc(routes =>
             {
                 routes
-                    .MapServiceIndexRoutes()
                     .MapPackagePublishRoutes()
                     .MapSearchRoutes()
                     .MapRegistrationRoutes()
