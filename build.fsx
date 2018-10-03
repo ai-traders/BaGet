@@ -120,7 +120,7 @@ let createNuPkg name versions =
 
 Target.create "ExampleNuGets" (fun _ -> 
     createNuPkg "baget-test1" ["1.0.0"]
-    createNuPkg "baget-test1" ["1.0.0"; "2.1.0"]
+    createNuPkg "baget-two" ["1.0.0"; "2.1.0"]
 )
 
 Target.create "RunIntegrationTests" (fun _ -> 
@@ -131,6 +131,16 @@ Target.create "RunIntegrationTests" (fun _ ->
         })
 )
 
+Target.create "RunTests" (fun _ -> 
+    testAssemblies 
+    |> runXunit (fun p -> {
+            p with 
+                TimeOut=System.TimeSpan.FromMinutes(10.0)
+                XmlOutputPath=Some "TestsResults.xml"
+                HtmlOutputPath=Some "TestResults.html"
+        })
+)
+
 open Fake.Core.TargetOperators
 
 Target.create "All" ignore
@@ -138,9 +148,12 @@ Target.create "All" ignore
 "ExampleNuGets"
   ==> "RunIntegrationTests"
 
+"Build" ==> "RunTests"
+"Build" ==> "RunIntegrationTests"
+"ExampleNuGets" ==> "RunTests"
+
 "Build"
-  ==> "RunUnitTests"
-  ==> "RunIntegrationTests"
+  ==> "RunTests"
   ==> "All"
 // start build
 Target.runOrDefault "All"
