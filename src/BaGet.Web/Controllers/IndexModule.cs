@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using BaGet.Web.Extensions;
 using Carter;
-using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
 using Carter.ModelBinding;
 using Carter.Request;

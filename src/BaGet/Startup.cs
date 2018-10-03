@@ -60,11 +60,6 @@ namespace BaGet
             app.UseCors(ConfigureCorsOptions.CorsPolicy);
 
             app.UseCarter();
-            app.UseMvc(routes =>
-            {
-                routes
-                    .MapPackagePublishRoutes();
-            });
         }
     }
 }

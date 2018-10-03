@@ -4,7 +4,6 @@ using System.Linq;
 using BaGet.Core.Services;
 using BaGet.Web.Extensions;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
 
 namespace BaGet.Web.Models
 {
