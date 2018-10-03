@@ -63,8 +63,7 @@ namespace BaGet
             app.UseMvc(routes =>
             {
                 routes
-                    .MapPackagePublishRoutes()
-                    .MapSearchRoutes();
+                    .MapPackagePublishRoutes();
             });
         }
     }
