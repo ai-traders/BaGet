@@ -128,5 +128,18 @@ namespace BaGet.Tests
             Assert.Equal(new PackageIdentity("baget-test1", NuGetVersion.Parse("1.0.0")), one.Identity);
         }
 
+        [Fact]
+        [Trait("Category", "integration")] // because it uses external nupkg files
+        public async Task PushAndDeletePackage()
+        {
+            var packageResource = await _sourceRepository.GetResourceAsync<PackageUpdateResource>();
+            await packageResource.Push(TestResources.GetNupkgBagetTest1(),
+                null, 5, false, GetApiKey, GetApiKey, false, logger);
+            await packageResource.Delete(
+                "baget-test1", "1.0.0", GetApiKey, _ => true, false, logger);
+            PackageMetadataResourceV3 packageMetadataRes = GetPackageMetadataResource();
+            var meta = await packageMetadataRes.GetMetadataAsync("baget-test1", true, true, _cacheContext, logger, CancellationToken.None);
+            Assert.Empty(meta);
+        }
     }
 }
