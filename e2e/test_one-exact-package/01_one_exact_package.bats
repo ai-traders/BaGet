@@ -15,6 +15,7 @@ load '/opt/bats-assert/load.bash'
 
 @test "paket install pinned package version" {
   run /bin/bash -c "cd paket-pinned && mono /ide/work/e2e/.paket/paket.exe install"
+  assert_output --partial "Installing into projects"
   refute_output --partial 'Could not download'
   refute_output --partial 'went wrong'
   assert_equal "$status" 0
