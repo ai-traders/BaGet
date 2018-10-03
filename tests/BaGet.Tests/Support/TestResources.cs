@@ -22,5 +22,25 @@ namespace BaGet.Tests.Support
                 "/ide/work/e2e/input/baget-test1/bin/Debug/baget-test1.1.0.0.nupkg"
             );
         }
+
+        public static string GetNupkgBagetTwoV1()
+        {
+            string filename = "baget-two.1.0.0.nupkg";
+            return GetFile(
+                filename,                
+                "e2e/input/baget-two/bin/Debug/" + filename,
+                "/ide/work/e2e/input/baget-two/bin/Debug/" + filename
+            );
+        }
+
+        public static string GetNupkgBagetTwoV2()
+        {
+            string filename = "baget-two.2.1.0.nupkg";
+            return GetFile(
+                filename,                
+                "e2e/input/baget-two/bin/Debug/" + filename,
+                "/ide/work/e2e/input/baget-two/bin/Debug/" + filename
+            );
+        }
     }
 }

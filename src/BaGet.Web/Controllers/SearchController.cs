@@ -28,7 +28,7 @@ namespace BaGet.Web.Controllers
             return new
             {
                 TotalHits = results.Count,
-                Data = results.Select(p => new SearchResultModel(p, Url))
+                Data = results.Select(p => new SearchResultModel(p, Url.ActionContext.HttpContext.Request))
             };
         }
 

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using BaGet.Core.Services;
 using BaGet.Web.Extensions;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BaGet.Web.Models
@@ -10,9 +11,9 @@ namespace BaGet.Web.Models
     public class SearchResultModel
     {
         private readonly SearchResult _result;
-        private readonly IUrlHelper _url;
+        private readonly HttpRequest _url;
 
-        public SearchResultModel(SearchResult result, IUrlHelper url)
+        public SearchResultModel(SearchResult result, HttpRequest url)
         {
             _result = result ?? throw new ArgumentNullException(nameof(result));
             _url = url ?? throw new ArgumentNullException(nameof(url));

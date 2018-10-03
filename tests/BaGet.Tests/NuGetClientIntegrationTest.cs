@@ -141,5 +141,48 @@ namespace BaGet.Tests
             var meta = await packageMetadataRes.GetMetadataAsync("baget-test1", true, true, _cacheContext, logger, CancellationToken.None);
             Assert.Empty(meta);
         }
+
+        // Search
+        [Fact]
+        [Trait("Category", "integration")] // because it uses external nupkg files
+        public async Task PushOneThenSearchPackage()
+        {
+            var packageResource = await _sourceRepository.GetResourceAsync<PackageUpdateResource>();
+            await packageResource.Push(TestResources.GetNupkgBagetTest1(),
+                null, 5, false, GetApiKey, GetApiKey, false, logger);
+            PackageSearchResourceV3 search = GetSearch();
+            var found = await search.SearchAsync("baget-test1", new SearchFilter(true), 0, 10, logger, CancellationToken.None);
+            Assert.NotEmpty(found);
+            var one = found.First();
+            Assert.Equal(new PackageIdentity("baget-test1", NuGetVersion.Parse("1.0.0")), one.Identity);
+        }
+
+        private PackageSearchResourceV3 GetSearch()
+        {
+            PackageMetadataResourceV3 packageMetadataRes = GetPackageMetadataResource();
+            RawSearchResourceV3 rawSearchResource = _sourceRepository.GetResource<RawSearchResourceV3>();
+            Assert.NotNull(rawSearchResource);
+            var search = new PackageSearchResourceV3(rawSearchResource, packageMetadataRes);
+            return search;
+        }
+
+        [Fact]
+        [Trait("Category", "integration")] // because it uses external nupkg files
+        public async Task Push2VersionsThenSearchPackage()
+        {
+            var packageResource = await _sourceRepository.GetResourceAsync<PackageUpdateResource>();
+            await packageResource.Push(TestResources.GetNupkgBagetTwoV1(),
+                null, 5, false, GetApiKey, GetApiKey, false, logger);
+            await packageResource.Push(TestResources.GetNupkgBagetTwoV2(),
+                null, 5, false, GetApiKey, GetApiKey, false, logger);
+            PackageSearchResourceV3 search = GetSearch();
+            var found = await search.SearchAsync("baget-two", new SearchFilter(true), 0, 10, logger, CancellationToken.None);
+            Assert.NotEmpty(found);
+            var ids = found.Select(p => p.Identity);            
+            Assert.Contains(ids, p => p.Version.Equals(NuGetVersion.Parse("2.1.0")));
+            var versions = await found.First().GetVersionsAsync();
+            Assert.Contains(versions, p => p.Version.Equals(NuGetVersion.Parse("1.0.0")));
+            Assert.Contains(versions, p => p.Version.Equals(NuGetVersion.Parse("2.1.0")));
+        }
     }
 }
