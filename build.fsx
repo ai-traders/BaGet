@@ -2,8 +2,10 @@
 // FAKE build script
 // --------------------------------------------------------------------------------------
 #r "paket: groupref Tools //"
+open System.IO
 #load "./.fake/build.fsx/intellisense.fsx"
 open Fake.IO
+open Fake.IO.FileSystemOperators
 open Fake.IO.Globbing.Operators
 open Fake.DotNet
 open Fake.Core
@@ -108,6 +110,19 @@ Target.create "RunUnitTests" (fun _ ->
         })
 )
 
+let createNuPkg name versions =
+    let projectDir = "e2e" </> "input" </> name
+    Directory.delete projectDir
+    Directory.create projectDir
+    runDotnet (fun o -> {o with WorkingDirectory = projectDir }) "new" "classlib"
+    versions |> Seq.iter(fun version ->
+        runDotnet (fun o -> {o with WorkingDirectory = projectDir }) "pack" <| sprintf "/p:Version=%s" version)
+
+Target.create "ExampleNuGets" (fun _ -> 
+    createNuPkg "baget-test1" ["1.0.0"]
+    createNuPkg "baget-test1" ["1.0.0"; "2.1.0"]
+)
+
 Target.create "RunIntegrationTests" (fun _ -> 
     testAssemblies 
     |> runXunit (fun p -> {
@@ -119,6 +134,9 @@ Target.create "RunIntegrationTests" (fun _ ->
 open Fake.Core.TargetOperators
 
 Target.create "All" ignore
+
+"ExampleNuGets"
+  ==> "RunIntegrationTests"
 
 "Build"
   ==> "RunUnitTests"

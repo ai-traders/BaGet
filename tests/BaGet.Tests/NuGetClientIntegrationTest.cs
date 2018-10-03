@@ -12,6 +12,10 @@ using NuGet.Configuration;
 using BaGet.Tests.Support;
 using System.Net.Http;
 using System.Net;
+using System.Threading;
+using FluentValidation;
+using NuGet.Packaging.Core;
+using NuGet.Versioning;
 
 namespace BaGet.Tests
 {
@@ -28,6 +32,7 @@ namespace BaGet.Tests
         HttpSourceResource _httpSource;
         private HttpClient _httpClient;
         string indexUrl;
+        private NuGet.Common.ILogger logger = new NuGet.Common.NullLogger();
 
         public NuGetClientIntegrationTest(ITestOutputHelper helper)
         {
@@ -45,6 +50,19 @@ namespace BaGet.Tests
             _cacheContext = new SourceCacheContext() { NoCache = true, MaxAge=new DateTimeOffset(), DirectDownload=true };
             _httpSource = _sourceRepository.GetResource<HttpSourceResource>();
             Assert.IsType<HttpSourceTestHost>(_httpSource.HttpSource);
+        }
+
+        private PackageMetadataResourceV3 GetPackageMetadataResource()
+        {
+            RegistrationResourceV3 regResource = _sourceRepository.GetResource<RegistrationResourceV3>();
+            ReportAbuseResourceV3 reportAbuseResource = _sourceRepository.GetResource<ReportAbuseResourceV3>();
+            var packageMetadataRes = new PackageMetadataResourceV3(_httpSource.HttpSource, regResource, reportAbuseResource);
+            return packageMetadataRes;
+        }
+
+        private string GetApiKey(string arg)
+        {
+            return "";
         }
         public void Dispose()
         {
@@ -93,6 +111,21 @@ namespace BaGet.Tests
         {
             var indexResource = await _sourceRepository.GetResourceAsync<ServiceIndexResourceV3>();
             Assert.NotEmpty(indexResource.GetServiceEntries("SearchAutocompleteService"));
+        }
+
+        // Push
+        [Fact]
+        [Trait("Category", "integration")] // because it uses external nupkg files
+        public async Task PushValidPackage()
+        {
+            var packageResource = await _sourceRepository.GetResourceAsync<PackageUpdateResource>();
+            await packageResource.Push(TestResources.GetNupkgBagetTest1(),
+                null, 5, false, GetApiKey, GetApiKey, false, logger);
+            PackageMetadataResourceV3 packageMetadataRes = GetPackageMetadataResource();
+            var meta = await packageMetadataRes.GetMetadataAsync("baget-test1", true, true, _cacheContext, logger, CancellationToken.None);
+            Assert.NotEmpty(meta);
+            var one = meta.First();
+            Assert.Equal(new PackageIdentity("baget-test1", NuGetVersion.Parse("1.0.0")), one.Identity);
         }
 
     }
