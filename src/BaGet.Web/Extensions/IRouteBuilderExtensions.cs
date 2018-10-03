@@ -36,20 +36,5 @@ namespace BaGet.Web.Extensions
 
             return routes;
         }
-
-        public static IRouteBuilder MapSearchRoutes(this IRouteBuilder routes)
-        {
-            routes.MapRoute(
-                name: Routes.SearchRouteName,
-                template: "v3/search",
-                defaults: new { controller = "Search", action = "Get" });
-
-            routes.MapRoute(
-                name: Routes.AutocompleteRouteName,
-                template: "v3/autocomplete",
-                defaults: new { controller = "Search", action = "Autocomplete" });
-
-            return routes;
-        }
     }
 }
