@@ -9,3 +9,4 @@ xunit.runner.visualstudio
 dotnet-xunit
 NuGet.Protocol
 carter
+Moq
