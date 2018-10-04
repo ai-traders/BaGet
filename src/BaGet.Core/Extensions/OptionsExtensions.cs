@@ -49,11 +49,18 @@ namespace BaGet.Core.Extensions
 
             if (!options.Enabled) return;
 
-            if (options.PackageSource == null)
+            if (options.UpstreamIndex == null)
             {
                 ThrowMissingConfiguration(
                     nameof(BaGetOptions.Mirror),
-                    nameof(MirrorOptions.PackageSource));
+                    nameof(MirrorOptions.UpstreamIndex));
+            }
+
+            if (options.PackagesPath == null)
+            {
+                ThrowMissingConfiguration(
+                    nameof(BaGetOptions.Mirror),
+                    nameof(MirrorOptions.PackagesPath));
             }
 
             if (options.PackageDownloadTimeoutSeconds <= 0)

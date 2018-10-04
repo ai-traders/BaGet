@@ -29,7 +29,7 @@ namespace BaGet.Web.Controllers
                 await res.AsJson(new
                 {
                     TotalHits = results.Count,
-                    Data = results.Select(p => new SearchResultModel(p, req))
+                    Data = results.Select(p => new SearchResultModel(p, req, ""))
                 });
             });
 

@@ -24,6 +24,9 @@ ENV ASPNETCORE_ENVIRONMENT=Production \
     Database__RunMigrations=true \
     Database__Type=Sqlite \
     Database__ConnectionString="Data Source=/var/baget/db/sqlite.db" \
+    Mirror__Enabled=true \
+    Mirror__UpstreamIndex="https://api.nuget.org/v3/index.json" \
+    Mirror__PackagesPath="/var/baget/cache" \
     Search__Type=Database
 
 COPY /src/BaGet/bin/Release/netcoreapp2.1/publish/ /app

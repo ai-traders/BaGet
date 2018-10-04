@@ -283,3 +283,7 @@ __pycache__/
 /e2e/.paket/paket.bootstrapper.exe.config
 /e2e/test_update-package/paket-constraint/paket.lock
 /e2e/test_update-package/paket/paket.lock
+/e2e/test_proxy/paket/paket.lock
+/e2e/test_proxy/paket-constraint/paket.lock
+/e2e/test_one-exact-package/paket-pinned/paket.lock
+/e2e/data/cache/

@@ -16,6 +16,7 @@ using System.Threading;
 using FluentValidation;
 using NuGet.Packaging.Core;
 using NuGet.Versioning;
+using System.IO;
 
 namespace BaGet.Tests
 {
@@ -24,30 +25,41 @@ namespace BaGet.Tests
     /// </summary>
     public class NuGetClientIntegrationTest : IDisposable
     {
+        private const string CacheIndex = "cache/v3/index.json";
+        static readonly string MainIndex = "v3/index.json";
+        public static IEnumerable<object[]> TestCases = new[] {
+            new object[] { MainIndex },
+            new object[] { CacheIndex },
+        };
         protected readonly ITestOutputHelper Helper;
         private readonly TestServer server;
-        readonly string IndexUrlString = "v3/index.json";
+        private readonly List<Lazy<INuGetResourceProvider>> providers;
         SourceRepository _sourceRepository;
         private SourceCacheContext _cacheContext;
         HttpSourceResource _httpSource;
         private HttpClient _httpClient;
         string indexUrl;
         private NuGet.Common.ILogger logger = new NuGet.Common.NullLogger();
+        TempDir tempDir;
 
         public NuGetClientIntegrationTest(ITestOutputHelper helper)
         {
             Helper = helper ?? throw new ArgumentNullException(nameof(helper));
-            server = TestServerBuilder.Create().TraceToTestOutputHelper(Helper,LogLevel.Error).Build();
-            var providers = new List<Lazy<INuGetResourceProvider>>();
+            server = TestServerBuilder.Create().TraceToTestOutputHelper(Helper, LogLevel.Error).Build();
+            providers = new List<Lazy<INuGetResourceProvider>>();
             providers.AddRange(Repository.Provider.GetCoreV3());
             providers.Add(new Lazy<INuGetResourceProvider>(() => new PackageMetadataResourceV3Provider()));
             _httpClient = server.CreateClient();
             providers.Insert(0, new Lazy<INuGetResourceProvider>(() => new HttpSourceResourceProviderTestHost(_httpClient)));
+            tempDir = new TempDir();
+        }
 
-            indexUrl = new Uri(server.BaseAddress, IndexUrlString).AbsoluteUri;
-            PackageSource packageSource = new PackageSource(indexUrl); 
+        private void InitializeClient(string index)
+        {
+            indexUrl = new Uri(server.BaseAddress, index).AbsoluteUri;
+            PackageSource packageSource = new PackageSource(indexUrl);
             _sourceRepository = new SourceRepository(packageSource, providers);
-            _cacheContext = new SourceCacheContext() { NoCache = true, MaxAge=new DateTimeOffset(), DirectDownload=true };
+            _cacheContext = new SourceCacheContext() { NoCache = true, MaxAge = new DateTimeOffset(), DirectDownload = true };
             _httpSource = _sourceRepository.GetResource<HttpSourceResource>();
             Assert.IsType<HttpSourceTestHost>(_httpSource.HttpSource);
         }
@@ -68,47 +80,61 @@ namespace BaGet.Tests
         {
             if(server != null)
                 server.Dispose();
+            if(tempDir != null)
+                tempDir.Dispose();
         }
 
-        [Fact]
-        public async Task GetIndexShouldReturn200()
+        [Theory]
+        [MemberData(nameof(TestCases))]
+        public async Task GetIndexShouldReturn200(string indexEndpoint)
         {
+            InitializeClient(indexEndpoint);
             var index = await _httpClient.GetAsync(indexUrl);
             Assert.Equal(HttpStatusCode.OK, index.StatusCode);
             return;
         }
 
-        [Fact]
-        public async Task IndexResourceHasManyEntries()
+        [Theory]
+        [MemberData(nameof(TestCases))]
+        public async Task IndexResourceHasManyEntries(string indexEndpoint)
         {
+            InitializeClient(indexEndpoint);
             var indexResource = await _sourceRepository.GetResourceAsync<ServiceIndexResourceV3>();
             Assert.NotEmpty(indexResource.Entries);
         }
 
-        [Fact]
-        public async Task IndexIncludesAtLeastOneSearchQueryEntry()
+        [Theory]
+        [MemberData(nameof(TestCases))]
+        public async Task IndexIncludesAtLeastOneSearchQueryEntry(string indexEndpoint)
         {
+            InitializeClient(indexEndpoint);
             var indexResource = await _sourceRepository.GetResourceAsync<ServiceIndexResourceV3>();
             Assert.NotEmpty(indexResource.GetServiceEntries("SearchQueryService"));
         }
 
-        [Fact]
-        public async Task IndexIncludesAtLeastOneRegistrationsBaseEntry()
+        [Theory]
+        [MemberData(nameof(TestCases))]
+        public async Task IndexIncludesAtLeastOneRegistrationsBaseEntry(string indexEndpoint)
         {
+            InitializeClient(indexEndpoint);
             var indexResource = await _sourceRepository.GetResourceAsync<ServiceIndexResourceV3>();
             Assert.NotEmpty(indexResource.GetServiceEntries("RegistrationsBaseUrl"));
         }
 
-        [Fact]
-        public async Task IndexIncludesAtLeastOnePackageBaseAddressEntry()
+        [Theory]
+        [MemberData(nameof(TestCases))]
+        public async Task IndexIncludesAtLeastOnePackageBaseAddressEntry(string indexEndpoint)
         {
+            InitializeClient(indexEndpoint);
             var indexResource = await _sourceRepository.GetResourceAsync<ServiceIndexResourceV3>();
             Assert.NotEmpty(indexResource.GetServiceEntries("PackageBaseAddress/3.0.0"));
         }
 
-        [Fact]
-        public async Task IndexIncludesAtLeastOneSearchAutocompleteServiceEntry()
+        [Theory]
+        [MemberData(nameof(TestCases))]
+        public async Task IndexIncludesAtLeastOneSearchAutocompleteServiceEntry(string indexEndpoint)
         {
+            InitializeClient(indexEndpoint);
             var indexResource = await _sourceRepository.GetResourceAsync<ServiceIndexResourceV3>();
             Assert.NotEmpty(indexResource.GetServiceEntries("SearchAutocompleteService"));
         }
@@ -118,6 +144,7 @@ namespace BaGet.Tests
         [Trait("Category", "integration")] // because it uses external nupkg files
         public async Task PushValidPackage()
         {
+            InitializeClient(MainIndex);
             var packageResource = await _sourceRepository.GetResourceAsync<PackageUpdateResource>();
             await packageResource.Push(TestResources.GetNupkgBagetTest1(),
                 null, 5, false, GetApiKey, GetApiKey, false, logger);
@@ -130,8 +157,57 @@ namespace BaGet.Tests
 
         [Fact]
         [Trait("Category", "integration")] // because it uses external nupkg files
+        public async Task PushAndDownloadValidPackage()
+        {
+            InitializeClient(MainIndex);
+            var packageResource = await _sourceRepository.GetResourceAsync<PackageUpdateResource>();
+            await packageResource.Push(TestResources.GetNupkgBagetTest1(),
+                null, 5, false, GetApiKey, GetApiKey, false, logger);
+            var findByIdRes = new RemoteV3FindPackageByIdResource(_sourceRepository, _httpSource.HttpSource);
+            var downloader = await findByIdRes.GetPackageDownloaderAsync(
+                new PackageIdentity("baget-test1", NuGetVersion.Parse("1.0.0")),
+                _cacheContext, logger, CancellationToken.None);
+            string tempPath = Path.Combine(tempDir.UniqueTempFolder, "test.nupkg");
+            await downloader.CopyNupkgFileToAsync(tempPath, CancellationToken.None);
+            Assert.Equal(File.ReadAllBytes(TestResources.GetNupkgBagetTest1()), File.ReadAllBytes(tempPath));
+        }
+
+        [Fact]
+        [Trait("Category", "integration")] // because it uses external nupkg files
+        public async Task Push2VersionsAndGetPackageVersions()
+        {
+            InitializeClient(MainIndex);
+            var packageResource = await _sourceRepository.GetResourceAsync<PackageUpdateResource>();
+            await packageResource.Push(TestResources.GetNupkgBagetTwoV1(),
+                null, 5, false, GetApiKey, GetApiKey, false, logger);
+            await packageResource.Push(TestResources.GetNupkgBagetTwoV2(),
+                null, 5, false, GetApiKey, GetApiKey, false, logger);
+            var findByIdRes = new RemoteV3FindPackageByIdResource(_sourceRepository, _httpSource.HttpSource);
+            var versions = await findByIdRes.GetAllVersionsAsync("baget-two",
+                _cacheContext, logger, CancellationToken.None);
+            Assert.Contains(versions, p => p.Equals(NuGetVersion.Parse("1.0.0")));
+            Assert.Contains(versions, p => p.Equals(NuGetVersion.Parse("2.1.0")));
+        }
+
+        [Fact]
+        [Trait("Category", "integration")] // because it uses external nupkg files
+        public async Task Push2VersionsAndGetDependencyInfo()
+        {
+            InitializeClient(MainIndex);
+            var packageResource = await _sourceRepository.GetResourceAsync<PackageUpdateResource>();
+            await packageResource.Push(TestResources.GetNupkgBagetTwoV1(),
+                null, 5, false, GetApiKey, GetApiKey, false, logger);
+            var findByIdRes = new RemoteV3FindPackageByIdResource(_sourceRepository, _httpSource.HttpSource);
+            var info = await findByIdRes.GetDependencyInfoAsync("baget-two", NuGetVersion.Parse("1.0.0"),
+                _cacheContext, logger, CancellationToken.None);
+            Assert.Equal(new PackageIdentity("baget-two", NuGetVersion.Parse("1.0.0")), info.PackageIdentity);
+        }
+
+        [Fact]
+        [Trait("Category", "integration")] // because it uses external nupkg files
         public async Task PushAndDeletePackage()
         {
+            InitializeClient(MainIndex);
             var packageResource = await _sourceRepository.GetResourceAsync<PackageUpdateResource>();
             await packageResource.Push(TestResources.GetNupkgBagetTest1(),
                 null, 5, false, GetApiKey, GetApiKey, false, logger);
@@ -147,6 +223,7 @@ namespace BaGet.Tests
         [Trait("Category", "integration")] // because it uses external nupkg files
         public async Task PushOneThenSearchPackage()
         {
+            InitializeClient(MainIndex);
             var packageResource = await _sourceRepository.GetResourceAsync<PackageUpdateResource>();
             await packageResource.Push(TestResources.GetNupkgBagetTest1(),
                 null, 5, false, GetApiKey, GetApiKey, false, logger);
@@ -170,6 +247,7 @@ namespace BaGet.Tests
         [Trait("Category", "integration")] // because it uses external nupkg files
         public async Task Push2VersionsThenSearchPackage()
         {
+            InitializeClient(MainIndex);
             var packageResource = await _sourceRepository.GetResourceAsync<PackageUpdateResource>();
             await packageResource.Push(TestResources.GetNupkgBagetTwoV1(),
                 null, 5, false, GetApiKey, GetApiKey, false, logger);
@@ -178,11 +256,60 @@ namespace BaGet.Tests
             PackageSearchResourceV3 search = GetSearch();
             var found = await search.SearchAsync("baget-two", new SearchFilter(true), 0, 10, logger, CancellationToken.None);
             Assert.NotEmpty(found);
-            var ids = found.Select(p => p.Identity);            
+            var ids = found.Select(p => p.Identity);
             Assert.Contains(ids, p => p.Version.Equals(NuGetVersion.Parse("2.1.0")));
             var versions = await found.First().GetVersionsAsync();
             Assert.Contains(versions, p => p.Version.Equals(NuGetVersion.Parse("1.0.0")));
             Assert.Contains(versions, p => p.Version.Equals(NuGetVersion.Parse("2.1.0")));
+        }
+
+        // Cache
+        [Fact]
+        [Trait("Category", "integration")] // because it talks to nuget.org
+        public async Task CacheGetPackageMetadata()
+        {
+            InitializeClient(CacheIndex);
+            PackageMetadataResourceV3 packageMetadataRes = GetPackageMetadataResource();
+            var meta = await packageMetadataRes.GetMetadataAsync("log4net", true, true, _cacheContext, logger, CancellationToken.None);
+            Assert.NotEmpty(meta);
+            var versions = meta.Select(m => m.Identity.Version);
+            Assert.Contains(versions, one => NuGetVersion.Parse("2.0.8").Equals(one));
+        }
+
+        [Fact]
+        [Trait("Category", "integration")] // because it talks to nuget.org
+        public async Task CacheDownloadValidPackage()
+        {
+            InitializeClient(CacheIndex);
+            var findByIdRes = new RemoteV3FindPackageByIdResource(_sourceRepository, _httpSource.HttpSource);
+            var downloader = await findByIdRes.GetPackageDownloaderAsync(
+                new PackageIdentity("log4net", NuGetVersion.Parse("2.0.8")),
+                _cacheContext, logger, CancellationToken.None);
+            string tempPath = Path.Combine(tempDir.UniqueTempFolder, "test.nupkg");
+            await downloader.CopyNupkgFileToAsync(tempPath, CancellationToken.None);
+            Assert.True(File.Exists(tempPath));
+        }
+
+        [Fact]
+        [Trait("Category", "integration")] // because it talks to nuget.org
+        public async Task CacheGetPackageVersions()
+        {
+            InitializeClient(CacheIndex);
+            var findByIdRes = new RemoteV3FindPackageByIdResource(_sourceRepository, _httpSource.HttpSource);
+            var versions = await findByIdRes.GetAllVersionsAsync("log4net",
+                _cacheContext, logger, CancellationToken.None);
+            Assert.Contains(versions, p => p.Equals(NuGetVersion.Parse("2.0.8")));
+        }
+
+        [Fact]
+        [Trait("Category", "integration")] // because it talks to nuget.org
+        public async Task CacheGetDependencyInfo()
+        {
+            InitializeClient(CacheIndex);
+            var findByIdRes = new RemoteV3FindPackageByIdResource(_sourceRepository, _httpSource.HttpSource);
+            var info = await findByIdRes.GetDependencyInfoAsync("log4net", NuGetVersion.Parse("2.0.8"),
+                _cacheContext, logger, CancellationToken.None);
+            Assert.Equal(new PackageIdentity("log4net", NuGetVersion.Parse("2.0.8")), info.PackageIdentity);
         }
     }
 }

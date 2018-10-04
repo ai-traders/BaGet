@@ -264,6 +264,11 @@ namespace BaGet.Extensions
         /// <param name="services">The defined services.</param>
         public static IServiceCollection AddMirrorServices(this IServiceCollection services)
         {
+            services.AddTransient<IPackageCacheService>(provider => 
+            {
+                var options = provider.GetRequiredService<IOptions<BaGetOptions>>().Value;
+                return new FileSystemPackageCacheService(options.Mirror.PackagesPath);
+            });
             services.AddTransient<IMirrorService>(provider =>
             {
                 var mirrorOptions = provider
@@ -279,11 +284,10 @@ namespace BaGet.Extensions
                 }
 
                 return new MirrorService(
-                    mirrorOptions.PackageSource,
-                    provider.GetRequiredService<IPackageService>(),
+                    provider.GetRequiredService<IPackageCacheService>(),
                     provider.GetRequiredService<IPackageDownloader>(),
-                    provider.GetRequiredService<IIndexingService>(),
-                    provider.GetRequiredService<ILogger<MirrorService>>());
+                    provider.GetRequiredService<ILogger<MirrorService>>(), 
+                    mirrorOptions);
             });
 
             services.AddTransient<IPackageDownloader, PackageDownloader>();

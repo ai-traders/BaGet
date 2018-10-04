@@ -14,6 +14,8 @@ using Carter.Request;
 using Carter.Response;
 using Microsoft.AspNetCore.Http;
 using Newtonsoft.Json;
+using NuGet.Packaging.Core;
+using NuGet.Protocol.Core.Types;
 using NuGet.Versioning;
 
 namespace BaGet.Controllers.Web.Registration
@@ -21,21 +23,21 @@ namespace BaGet.Controllers.Web.Registration
     /// <summary>
     /// The API to retrieve the metadata of a specific package.
     /// </summary>
-    public class RegistrationIndexModule : CarterModule
+    public class CacheRegistrationIndexModule : CarterModule
     {
-        private readonly IPackageService _packages;
+        private readonly IMirrorService _mirror;
 
-        public RegistrationIndexModule(IPackageService packageService)
+        public CacheRegistrationIndexModule(IMirrorService mirror)
         {
-            _packages = packageService ?? throw new ArgumentNullException(nameof(packageService));
-            this.Get("v3/registration/{id}/index.json", async (req, res, routeData) =>
+            this._mirror = mirror ?? throw new ArgumentNullException(nameof(mirror));
+            this.Get("cache/v3/registration/{id}/index.json", async (req, res, routeData) =>
             {
                 string id = routeData.As<string>("id");
                 // Documentation: https://docs.microsoft.com/en-us/nuget/api/registration-base-url-resource
-                var packages = await _packages.FindAsync(id);
-                var versions = packages.Select(p => p.Version).ToList();
+                var upstreamPackages = (await _mirror.FindUpstreamMetadataAsync(id, CancellationToken.None)).ToList();
+                var versions = upstreamPackages.Select(p => p.Identity.Version).ToList();
 
-                if (!packages.Any())
+                if (!upstreamPackages.Any())
                 {
                     res.StatusCode = 404;
                     return;
@@ -46,13 +48,13 @@ namespace BaGet.Controllers.Web.Registration
                 // Paged example: https://api.nuget.org/v3/registration3/fake/index.json
                 await res.AsJson(new
                 {
-                    Count = packages.Count,
-                    TotalDownloads = packages.Sum(p => p.Downloads),
+                    Count = upstreamPackages.Count,
+                    TotalDownloads = upstreamPackages.Sum(p => p.DownloadCount),
                     Items = new[]
                     {
                         new RegistrationIndexItem(
                             packageId: id,
-                            items: packages.Select(p => ToRegistrationIndexLeaf(req, p)).ToList(),
+                            items: upstreamPackages.Select(p => ToRegistrationIndexLeaf(req, p)).ToList(),
                             lower: versions.Min().ToNormalizedString(),
                             upper: versions.Max().ToNormalizedString()
                         ),
@@ -60,7 +62,7 @@ namespace BaGet.Controllers.Web.Registration
                 });
             });
 
-            this.Get("v3/registration/{id}/{version}.json", async (req, res, routeData) =>
+            this.Get("cache/v3/registration/{id}/{version}.json", async (req, res, routeData) =>
             {
                 string id = routeData.As<string>("id");
                 string version = routeData.As<string>("version");
@@ -71,7 +73,10 @@ namespace BaGet.Controllers.Web.Registration
                     return;
                 }
 
-                var package = await _packages.FindAsync(id, nugetVersion);
+                // Allow read-through caching to happen if it is confiured.
+                await _mirror.MirrorAsync(id, nugetVersion, CancellationToken.None);
+
+                var package = await _mirror.FindAsync(new PackageIdentity(id, nugetVersion));
 
                 if (package == null)
                 {
@@ -81,24 +86,25 @@ namespace BaGet.Controllers.Web.Registration
 
                 // Documentation: https://docs.microsoft.com/en-us/nuget/api/registration-base-url-resource
                 var result = new RegistrationLeaf(
-                    registrationUri: req.PackageRegistration(id, nugetVersion, ""),
-                    listed: package.Listed,
-                    downloads: package.Downloads,
-                    packageContentUri: req.PackageDownload(id, nugetVersion, ""),
-                    published: package.Published,
-                    registrationIndexUri: req.PackageRegistration(id, ""));
+                    registrationUri: req.PackageRegistration(id, nugetVersion, "cache"),
+                    listed: package.IsListed,
+                    downloads: package.DownloadCount.GetValueOrDefault(),
+                    packageContentUri: req.PackageDownload(id, nugetVersion, "cache"),
+                    published: package.Published.GetValueOrDefault(),
+                    registrationIndexUri: req.PackageRegistration(id, "cache"));
 
                 await res.AsJson(result);
             });
         }
 
-        private RegistrationIndexLeaf ToRegistrationIndexLeaf(HttpRequest request, Package package) =>
+        private RegistrationIndexLeaf ToRegistrationIndexLeaf(HttpRequest request, IPackageSearchMetadata package) =>
             new RegistrationIndexLeaf(
-                packageId: package.Id,
+                packageId: package.Identity.Id,
                 catalogEntry: new CatalogEntry(
                     package: package,
-                    catalogUri: $"https://api.nuget.org/v3/catalog0/data/2015.02.01.06.24.15/{package.Id}.{package.Version}.json",
-                    packageContent: request.PackageDownload(package.Id, package.Version, "")),
-                packageContent: request.PackageDownload(package.Id, package.Version, ""));
+                    catalogUri: $"https://api.nuget.org/v3/catalog0/data/2015.02.01.06.24.15/{package.Identity.Id}.{package.Identity.Version}.json",
+                    packageContent: request.PackageDownload(package.Identity.Id, package.Identity.Version, "cache")),
+                packageContent: request.PackageDownload(package.Identity.Id, package.Identity.Version, "cache"));
+
     }
 }

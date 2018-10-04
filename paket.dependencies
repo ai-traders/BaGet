@@ -3,7 +3,7 @@ framework netcoreapp2.1, netstandard2.0
 storage: none
 
 nuget McMaster.Extensions.CommandLineUtils
-nuget Microsoft.AspNetCore.App
+nuget Microsoft.AspNetCore.App 2.1.4
 nuget Microsoft.AspNetCore.TestHost
 nuget Microsoft.Azure.Search
 nuget Microsoft.Data.SQLite
@@ -21,7 +21,6 @@ nuget NuGet.Client
 nuget NuGet.Packaging
 nuget NuGet.Protocol
 nuget WindowsAzure.Storage
-nuget NuGet.Protocol
 nuget carter
 
 group Tools
@@ -42,15 +41,15 @@ group Test
   storage: none
 
   clitool dotnet-xunit
+  nuget Moq
   nuget xunit
   nuget xunit.runner.visualstudio
   nuget xunit.runner.console
   nuget Microsoft.NET.Test.Sdk
-  nuget Microsoft.AspNetCore.App
+  nuget Microsoft.AspNetCore.App 2.1.4
   nuget Microsoft.AspNetCore.TestHost
   nuget Microsoft.Extensions.Logging
   nuget Microsoft.Extensions.Logging.Abstractions
   nuget Microsoft.Extensions.Logging.Configuration
   nuget NuGet.Protocol
   nuget carter
-  nuget Moq

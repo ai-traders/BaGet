@@ -21,6 +21,6 @@ namespace BaGet.Core.Services
         Task<bool> ExistsAsync(string id, NuGetVersion version);
         Task<bool> UnlistPackageAsync(string id, NuGetVersion version);
         Task<bool> RelistPackageAsync(string id, NuGetVersion version);
-        Task<bool> AddDownloadAsync(string id, NuGetVersion version);
+        Task<bool> IncrementDownloadCountAsync(string id, NuGetVersion version);
     }
 }

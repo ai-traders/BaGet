@@ -46,6 +46,7 @@ case "${command}" in
     ide "./tasks.sh _build_inputs"
     rm e2e/data/db/*
     rm -rf e2e/data/packages/*
+    rm -rf e2e/data/cache/*
     export E2E_PAKET_VERSION="5.181.1"
     ide --idefile Idefile.e2e-docker "./e2e/run.sh"
     ;;

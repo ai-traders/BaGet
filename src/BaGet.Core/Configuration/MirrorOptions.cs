@@ -13,11 +13,17 @@ namespace BaGet.Core.Configuration
         /// <summary>
         /// The v3 index that will be mirrored.
         /// </summary>
-        public Uri PackageSource { get; set; }
+        public Uri UpstreamIndex { get; set; }
 
         /// <summary>
         /// The time before a download from the package source times out.
         /// </summary>
         public int PackageDownloadTimeoutSeconds { get; set; } = 600;
+
+        /// <summary>
+        /// Root directory to store cached files.
+        /// </summary>
+        /// <value></value>
+        public string PackagesPath { get; set; }
     }
 }
