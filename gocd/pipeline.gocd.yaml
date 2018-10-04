@@ -1,6 +1,6 @@
 format_version: 3
 pipelines:
-  baget.carter:
+  baget:
     group: liget
     label_template: "${git[:8]}"
     materials:
