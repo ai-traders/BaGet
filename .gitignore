@@ -301,3 +301,4 @@ __pycache__/
 /e2e/data/cache/
 /e2e/stress/paket-*/
 /e2e/stress/paket/paket.lock
+/pkg/

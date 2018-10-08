@@ -3,6 +3,9 @@
 set -e
 
 source .build/docker-ops
+source .build/releaser
+
+releaser_init
 
 # Fix for multi-line environment variables not working in docker envs
 unset TRAVIS_COMMIT_MESSAGE
@@ -19,6 +22,18 @@ function make_clean_dir {
 }
 
 export E2E_PAKET_VERSION="5.181.1"
+
+function get_version_tag {
+  changelog_first_line=$(cat ${changelog_file} | head -1)
+  changelog_version=$(get_last_version_from_changelog "${changelog_file}")
+  short_sha=$(git rev-parse --short=8 HEAD)
+  if [[ "${changelog_first_line}" == "#"*"Unreleased"* ]] || [[ "${changelog_first_line}" == "#"*"unreleased"* ]] || [[ "${changelog_first_line}" == "#"*"UNRELEASED"* ]];then
+    log_info "Top of changelog has 'Unreleased' flag"
+    echo "$changelog_version-$short_sha"
+  else
+    echo "$changelog_version"
+  fi
+}
 
 command="$1"
 case "${command}" in
@@ -50,7 +65,7 @@ case "${command}" in
   test_docker)
     source_imagerc "${image_dir}"  "${imagerc_filename}"
     ide "./tasks.sh _build_inputs"
-    rm e2e/data/db/*
+    rm -rf e2e/data/db/*
     rm -rf e2e/data/packages/*
     rm -rf e2e/data/cache/*
     ide --idefile Idefile.e2e-docker "./e2e/run.sh"
@@ -73,39 +88,15 @@ case "${command}" in
     set_version_in_changelog "${changelog_file}" "${version}"
     exit $?
     ;;
-  code_release)
-    # conditional release
-    git fetch origin
-    current_commit_git_tags=$(git tag -l --points-at HEAD)
-    if [[ "${current_commit_git_tags}" != "" ]];then
-      log_error "Current commit is already tagged"
-      exit 1
-    else
-      log_info "Current commit has no tags, starting code release..."
-      version_from_changelog=$(get_last_version_from_changelog "${changelog_file}")
-      validate_version_is_semver "${version_from_changelog}"
-      changelog_first_line=$(cat ${changelog_file} | head -1)
-      if [[ "${changelog_first_line}" == "#"*"Unreleased"* ]];then
-        log_error "Top of changelog has 'Unreleased' flag"
-        exit 1
-      fi
-      if git tag | grep "${version_from_changelog}"; then
-        log_error "The last version from changelog was already git tagged: ${version_from_changelog}"
-        exit 1
-      fi
-      git tag "${version_from_changelog}" && git push origin "${version_from_changelog}"
-    fi
-    exit $?
-    ;;
   publish_docker_private)
     source_imagerc "${image_dir}"  "${imagerc_filename}"
-    production_image_tag=$(get_last_version_from_changelog "${changelog_file}")
+    production_image_tag=$(get_version_tag)
     docker_push "${AIT_DOCKER_IMAGE_NAME}" "${AIT_DOCKER_IMAGE_TAG}" "${production_image_tag}"
     exit $?
     ;;
   publish_docker_public)
     source_imagerc "${image_dir}"  "${imagerc_filename}"
-    production_image_tag=$(get_last_version_from_changelog "${changelog_file}")
+    production_image_tag=$(get_version_tag)
     docker login --username tomzo --password ${DOCKERHUB_PASSWORD}
     testing_image_tag="${AIT_DOCKER_IMAGE_TAG}"
 
@@ -130,6 +121,9 @@ case "${command}" in
     fi
     set +x +e
     exit $?
+    ;;
+  github_release)
+    ide "./build.sh --target GitHubRelease"
     ;;
     *)
       echo "Invalid command: '${command}'"

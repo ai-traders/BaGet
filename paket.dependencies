@@ -33,7 +33,9 @@ group Tools
   nuget Fake.Core.ReleaseNotes
   nuget Fake.DotNet.Cli
   nuget Fake.Tools.Git
+  nuget Fake.Api.GitHub
   nuget Fake.DotNet.Testing.XUnit2
+  nuget Fake.IO.Zip
 
 group Test
   source https://api.nuget.org/v3/index.json
