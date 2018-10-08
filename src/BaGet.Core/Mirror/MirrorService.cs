@@ -4,111 +4,88 @@ using System.Threading;
 using System.Threading.Tasks;
 using BaGet.Core.Services;
 using Microsoft.Extensions.Logging;
+using System.Linq;
+using NuGet.Packaging.Core;
+using System.IO;
+using BaGet.Core.Configuration;
+using System.Collections.Concurrent;
 using NuGet.Configuration;
 using NuGet.Protocol.Core.Types;
 using NuGet.Versioning;
 using NuGet.Protocol;
 using NuGet.Common;
-using System.Linq;
-using NuGet.Packaging.Core;
-using System.IO;
-using BaGet.Core.Configuration;
 
 namespace BaGet.Core.Mirror
 {
     public class MirrorService : IMirrorService
     {
+        private readonly object _startLock;
+        private readonly Dictionary<PackageIdentity, Task> _downloads;
         private readonly IPackageCacheService _localPackages;
         private readonly IPackageDownloader _downloader;
         private readonly ILogger<MirrorService> _logger;
-        private readonly SourceRepository _sourceRepository;
-        private readonly RegistrationResourceV3 _regResource;
-        private SourceCacheContext _cacheContext;
+        private readonly ISourceRepository _sourceRepository;
         NuGetLoggerAdapter<MirrorService> _loggerAdapter;
-        private PackageMetadataResourceV3 _metadataSearch;
-        private RemoteV3FindPackageByIdResource _versionSearch;
 
         public MirrorService(
+            INuGetClient client,
             IPackageCacheService localPackages,
             IPackageDownloader downloader,
             ILogger<MirrorService> logger,
             MirrorOptions options)
         {
+            _startLock = new object();
+            _downloads = new Dictionary<PackageIdentity, Task>();
             _localPackages = localPackages ?? throw new ArgumentNullException(nameof(localPackages));
             _downloader = downloader ?? throw new ArgumentNullException(nameof(downloader));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            this._loggerAdapter = new NuGetLoggerAdapter<MirrorService>(_logger);
-            List<Lazy<INuGetResourceProvider>> providers = new List<Lazy<INuGetResourceProvider>>();
-            providers.AddRange(Repository.Provider.GetCoreV3());
-            providers.Add(new Lazy<INuGetResourceProvider>(() => new PackageMetadataResourceV3Provider()));
-            PackageSource packageSource = new PackageSource(options.UpstreamIndex.AbsoluteUri);
-            _sourceRepository = new SourceRepository(packageSource, providers);
-            _cacheContext = new SourceCacheContext();
-            var httpSource = _sourceRepository.GetResource<HttpSourceResource>();
-            _regResource = _sourceRepository.GetResource<RegistrationResourceV3>();
-            ReportAbuseResourceV3 reportAbuseResource = _sourceRepository.GetResource<ReportAbuseResourceV3>();
-            _metadataSearch = new PackageMetadataResourceV3(httpSource.HttpSource, _regResource, reportAbuseResource);
-            _versionSearch = new RemoteV3FindPackageByIdResource(_sourceRepository, httpSource.HttpSource);
+            this._loggerAdapter = new NuGetLoggerAdapter<MirrorService>(_logger);            
+            _sourceRepository = client.GetRepository(options.UpstreamIndex);
         }
 
         public async Task<IEnumerable<IPackageSearchMetadata>> FindUpstreamMetadataAsync(string id, CancellationToken ct) {
             //TODO: possibly cache response
-            return await _metadataSearch.GetMetadataAsync(id, true, false, _cacheContext, _loggerAdapter, ct);
+            return await _sourceRepository.GetMetadataAsync(id, true, false, ct);
         }
 
         public async Task<IReadOnlyList<string>> FindUpstreamAsync(string id, CancellationToken ct)
         {           
-            var versions = await _versionSearch.GetAllVersionsAsync(id, _cacheContext, _loggerAdapter, ct);
+            var versions = await _sourceRepository.GetAllVersionsAsync(id, ct);
             //TODO: possibly cache response
             return versions.Select(v => v.ToNormalizedString()).ToList();
         }
 
-        public async Task MirrorAsync(string id, NuGetVersion version, CancellationToken cancellationToken)
+        public Task MirrorAsync(string id, NuGetVersion version, CancellationToken cancellationToken)
         {
             var pid = new PackageIdentity(id, version);
-            if (await _localPackages.ExistsAsync(pid))
+            if (_localPackages.ExistsAsync(pid).Result)
             {
-                return;
+                return Task.CompletedTask;
             }
 
-            var idString = id.ToLowerInvariant();
-            var versionString = version.ToNormalizedString().ToLowerInvariant();
-
-            await IndexFromSourceAsync(idString, versionString, cancellationToken);
+            lock(_startLock) {                
+                if(!_downloads.TryGetValue(pid, out var task)) {
+                    task = IndexFromSourceAsync(pid, cancellationToken);
+                    _downloads.Add(pid, task);
+                }                
+                int count = _downloads.Count;
+                _logger.LogDebug("Total count of downloads in progress {Count}", count);
+                return task;
+            }
         }
 
-        private async Task IndexFromSourceAsync(string id, string version, CancellationToken cancellationToken)
+        private async Task IndexFromSourceAsync(PackageIdentity pid, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
+
+            string id = pid.Id.ToLowerInvariant();
+            string version = pid.Version.ToNormalizedString().ToLowerInvariant();
 
             _logger.LogInformation("Attempting to mirror package {Id} {Version}...", id, version);
 
             try
             {
-                var pid = new PackageIdentity(id, NuGetVersion.Parse(version));
-                var serviceIndex = await _sourceRepository.GetResourceAsync<ServiceIndexResourceV3>(cancellationToken);
-                var packageBaseAddress = serviceIndex.GetServiceEntryUri(ServiceTypes.PackageBaseAddress);      
-                Uri packageUri;          
-                if (packageBaseAddress != null)
-                {
-                    packageUri = new Uri(packageBaseAddress, $"{id}/{version}/{id}.{version}.nupkg");
-                }
-                else
-                {
-                    _logger.LogDebug("Upstream repository does not support flat container, falling back to registration");
-                    // If there is no flat container resource fall back to using the registration resource to find the download url.
-                    using (var sourceCacheContext = new SourceCacheContext())
-                    {
-                        // Read the url from the registration information
-                        var blob = await _regResource.GetPackageMetadata(pid, sourceCacheContext, _loggerAdapter, cancellationToken);
-                        if (blob != null && blob["packageContent"] != null)
-                        {
-                            packageUri = new Uri(blob["packageContent"].ToString());
-                        }
-                        else
-                            throw new InvalidOperationException("Could not determine upstream url for download");
-                    }
-                }
+                Uri packageUri = await _sourceRepository.GetPackageUriAsync(id, version, cancellationToken);                
 
                 using (var stream = await _downloader.DownloadOrNullAsync(packageUri, cancellationToken))
                 {
@@ -136,6 +113,11 @@ namespace BaGet.Core.Mirror
             catch (Exception e)
             {
                 _logger.LogError(e, "Failed to mirror package {Id} {Version}", id, version);
+            }
+            finally {
+                lock(_startLock) {             
+                    _downloads.Remove(pid);
+                }
             }
         }
 
@@ -165,7 +147,7 @@ namespace BaGet.Core.Mirror
         public Task<IPackageSearchMetadata> FindAsync(PackageIdentity identity)
         {
             //TODO: possibly cache and stream from in-memory cache
-            return _metadataSearch.GetMetadataAsync(identity, _cacheContext, _loggerAdapter, CancellationToken.None);             
+            return _sourceRepository.GetMetadataAsync(identity, CancellationToken.None);             
         }
     }
 }
