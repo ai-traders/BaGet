@@ -7,6 +7,7 @@ using BaGet.Azure.Configuration;
 using BaGet.Azure.Extensions;
 using BaGet.Azure.Search;
 using BaGet.Configurations;
+using BaGet.Core;
 using BaGet.Core.Configuration;
 using BaGet.Core.Entities;
 using BaGet.Core.Extensions;
@@ -269,7 +270,8 @@ namespace BaGet.Extensions
                 var options = provider.GetRequiredService<IOptions<BaGetOptions>>().Value;
                 return new FileSystemPackageCacheService(options.Mirror.PackagesPath);
             });
-            services.AddTransient<IMirrorService>(provider =>
+            services.AddTransient<INuGetClient, NuGetClient>();
+            services.AddSingleton<IMirrorService>(provider =>
             {
                 var mirrorOptions = provider
                     .GetRequiredService<IOptions<BaGetOptions>>()
@@ -284,6 +286,7 @@ namespace BaGet.Extensions
                 }
 
                 return new MirrorService(
+                    provider.GetRequiredService<INuGetClient>(),
                     provider.GetRequiredService<IPackageCacheService>(),
                     provider.GetRequiredService<IPackageDownloader>(),
                     provider.GetRequiredService<ILogger<MirrorService>>(), 

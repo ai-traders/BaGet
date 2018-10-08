@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using BaGet.Core;
 using BaGet.Core.Configuration;
 using BaGet.Core.Mirror;
 using BaGet.Tests.Support;
@@ -30,7 +31,7 @@ namespace BaGet.Tests
                 PackagesPath = tempDir.UniqueTempFolder,
                 PackageDownloadTimeoutSeconds = 10
             };
-            mirrorService = new MirrorService(localPackages, downloader, logger.CreateLogger<MirrorService>("MirrorServiceItest"), options);
+            mirrorService = new MirrorService(new NuGetClient(logger.CreateLogger<NuGetClient>("MirrorServiceItest")),localPackages, downloader, logger.CreateLogger<MirrorService>("MirrorServiceItest"), options);
         }
         public void Dispose()
         {
@@ -50,6 +51,5 @@ namespace BaGet.Tests
                 
             }            
         }
-
     }
 }
