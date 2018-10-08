@@ -2,6 +2,7 @@
 // FAKE build script
 // --------------------------------------------------------------------------------------
 #r "paket: groupref Tools //"
+open System.IO
 #load "./.fake/build.fsx/intellisense.fsx"
 open Fake.IO
 open Fake.IO.FileSystemOperators
@@ -24,7 +25,7 @@ let changelogVersion = release.AssemblyVersion
 
 // --------------------------------------------------------------------------------------
 // Build projects
-    
+
 Target.create "Build" (fun _ ->
     let msbuild target =
         let setParams (defaults:MSBuildParams) =
@@ -59,22 +60,22 @@ let runSpaProcess exe args timeout =
         failwithf "%s process exited with %d: %s" exe result.ExitCode errors
     Trace.trace <| System.String.Join(System.Environment.NewLine,result.Messages)
 
-Target.create "SpaRestore" (fun _ -> 
+Target.create "SpaRestore" (fun _ ->
     runSpaProcess "yarn" "install"  (System.TimeSpan.FromMinutes(10.0))
 )
 
-Target.create "SpaBuild" (fun _ -> 
+Target.create "SpaBuild" (fun _ ->
     runSpaProcess "npm" "run build"  (System.TimeSpan.FromMinutes(2.0))
 )
 
-Target.create "SpaPublish" (fun _ -> 
+Target.create "SpaPublish" (fun _ ->
     Directory.delete spaPublishDir
     Directory.create spaPublishDir
     !! "src/BaGet.UI/dist/**/*" |> Shell.copy spaPublishDir
 )
 
 // --------------------------------------------------------------------------------------
-// Run the unit tests 
+// Run the unit tests
 
 let runXunit setParams assemblies =
     // A bit of patching to use dotnet core runner
@@ -110,7 +111,7 @@ let runXunit setParams assemblies =
         else parametersFirst
 
     let xunitRunner = "packages/tools/xunit.runner.console/tools/netcoreapp2.0/xunit.console.dll"
-    let args = xunitRunner + " " + buildArgs parameters assemblies    
+    let args = xunitRunner + " " + buildArgs parameters assemblies
 
     let result =
         Process.execSimple ((fun info ->
@@ -129,22 +130,35 @@ let runDotnet options command args =
         Trace.traceError <| System.String.Join(System.Environment.NewLine,result.Messages)
         failwithf "dotnet process exited with %d: %s" result.ExitCode errors
 
-Target.create "RunUnitTests" (fun _ -> 
-    testAssemblies 
+Target.create "RunUnitTests" (fun _ ->
+    testAssemblies
     |> runXunit (fun p -> {
-            p with 
-                ExcludeTraits=[ ("Category","integration") ] 
+            p with
+                ExcludeTraits=[ ("Category","integration") ]
                 TimeOut=System.TimeSpan.FromMinutes(5.0)
                 XmlOutputPath=Some "UnitTestsResults.xml"
                 HtmlOutputPath=Some "UnitTestResults.html"
         })
 )
 
-Target.create "RunIntegrationTests" (fun _ -> 
-    testAssemblies 
+let createNuPkg name versions =
+    let projectDir = "e2e" </> "input" </> name
+    Directory.delete projectDir
+    Directory.create projectDir
+    runDotnet (fun o -> {o with WorkingDirectory = projectDir }) "new" "classlib"
+    versions |> Seq.iter(fun version ->
+        runDotnet (fun o -> {o with WorkingDirectory = projectDir }) "pack" <| sprintf "/p:Version=%s" version)
+
+Target.create "ExampleNuGets" (fun _ ->
+    createNuPkg "baget-test1" ["1.0.0"]
+    createNuPkg "baget-test1" ["1.0.0"; "2.1.0"]
+)
+
+Target.create "RunIntegrationTests" (fun _ ->
+    testAssemblies
     |> runXunit (fun p -> {
-            p with 
-                IncludeTraits=[ ("Category","integration") ] 
+            p with
+                IncludeTraits=[ ("Category","integration") ]
         })
 )
 
@@ -152,11 +166,13 @@ open Fake.Core.TargetOperators
 
 Target.create "All" ignore
 
-"SpaRestore" 
+"SpaRestore"
     ==> "SpaBuild"
     ==> "SpaPublish"
     ==> "All"
 
+"ExampleNuGets"
+  ==> "RunIntegrationTests"
 "Build"
   ==> "RunUnitTests"
   ==> "RunIntegrationTests"

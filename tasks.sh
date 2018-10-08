@@ -15,13 +15,6 @@ function make_clean_dir {
   rm -rf $dir && mkdir -p $dir && cd $dir
 }
 
-function build_inputs {
-  cd e2e/input &&\
-    make_clean_dir 'baget-test1' && dotnet new classlib && dotnet pack && cd .. &&\
-    make_clean_dir 'baget-two' && dotnet new classlib && dotnet pack && dotnet pack /p:Version=2.1.0 &&\
-  cd ../..
-}
-
 command="$1"
 case "${command}" in
   _build)
@@ -38,7 +31,7 @@ case "${command}" in
     ide "./tasks.sh _unit_test"
     ;;
   _build_inputs)
-    build_inputs
+    ./build.sh --target ExampleNuGets --single-target
     ;;
   itest)
     ide "./tasks.sh build_inputs"
