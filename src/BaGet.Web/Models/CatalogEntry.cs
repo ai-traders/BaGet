@@ -59,7 +59,7 @@ namespace BaGet.Web.Models
             //Published = package.Published.GetValueOrDefault(DateTimeOffset.MinValue);
             RequireLicenseAcceptance = package.RequireLicenseAcceptance;
             Summary = package.Summary;
-            Tags = package.Tags == null ? null : package.Tags.Split(",");
+            Tags = package.Tags == null ? null : package.Tags.Split(',');
             Title = package.Title;
         }
 

@@ -28,11 +28,11 @@ namespace BaGet
         public void ConfigureServices(IServiceCollection services)
         {
             services.ConfigureBaGet(Configuration, httpServices: true);
-            
+
             services.AddSpaStaticFiles(configuration =>
-            {                
+            {
                 var sourceDist = Path.Combine(Environment.CurrentDirectory, "src", "BaGet.UI" , "dist");
-                if(Directory.Exists(sourceDist)) 
+                if(Directory.Exists(sourceDist))
                 {
                     // we are running tests from root of project
                     configuration.RootPath = sourceDist;
@@ -41,13 +41,13 @@ namespace BaGet
                 sourceDist = Path.Combine("src", "BaGet.UI" , "dist");
                 for(int depth=0; depth < 5; depth++) {
                     sourceDist = Path.Combine("..", sourceDist);
-                    if(Directory.Exists(sourceDist)) 
+                    if(Directory.Exists(sourceDist))
                     {
                         // we are running tests from debugger/editor
                         configuration.RootPath = sourceDist;
                         return;
                     }
-                }                
+                }
                 // In production, the UI files will be served from wwwroot directory next to BaGet.dll file
                 string codeBase = Path.GetDirectoryName(typeof(Startup).Assembly.CodeBase);
                 configuration.RootPath = Path.Combine(codeBase, "wwwroot");
@@ -88,18 +88,13 @@ namespace BaGet
             app.UseCors(ConfigureCorsOptions.CorsPolicy);
 
             app.UseCarter();
-            app.UseMvc(routes =>
-            {
-                routes
-                    .MapPackagePublishRoutes();
-            });
 
-            if(env.IsDevelopment()) 
+            if(env.IsDevelopment())
             {
-                app.UseSpa(spa => 
+                app.UseSpa(spa =>
                 {
                     spa.UseProxyToSpaDevelopmentServer("http://localhost:1234");
-                });                            
+                });
             }
         }
     }
