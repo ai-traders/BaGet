@@ -28,8 +28,9 @@ namespace BaGet.Tests
         private readonly string StorageTypeKey = $"{nameof(BaGetOptions.Storage)}:{nameof(StorageOptions.Type)}";
         private readonly string FileSystemStoragePathKey = $"{nameof(BaGetOptions.Storage)}:{nameof(FileSystemStorageOptions.Path)}";
         private readonly string SearchTypeKey = $"{nameof(BaGetOptions.Search)}:{nameof(SearchOptions.Type)}";
-
         private readonly string MirrorEnabledKey = $"{nameof(BaGetOptions.Mirror)}:{nameof(MirrorOptions.Enabled)}";
+        private readonly string UpstreamIndexKey = $"{nameof(BaGetOptions.Mirror)}:{nameof(MirrorOptions.UpstreamIndex)}";
+        private readonly string MirrorCachedDirKey = $"{nameof(BaGetOptions.Mirror)}:{nameof(MirrorOptions.PackagesPath)}";
 
         private ITestOutputHelper _helper;
         private LogLevel _minimumLevel = LogLevel.None;
@@ -109,7 +110,10 @@ namespace BaGet.Tests
             Configuration.Add(StorageTypeKey, StorageType.FileSystem.ToString());
             Configuration.Add(FileSystemStoragePathKey, storageFolderPath);
             Configuration.Add(SearchTypeKey, nameof(SearchType.Database));
-            Configuration.Add(MirrorEnabledKey, false.ToString());
+            Configuration.Add(MirrorEnabledKey, true.ToString());
+            Configuration.Add(UpstreamIndexKey, "https://api.nuget.org/v3/index.json");
+            string cacheDirName = Path.Combine(uniqueTempFolder, "CachedPackages");
+            Configuration.Add(MirrorCachedDirKey, cacheDirName);
             return this;
         }
 

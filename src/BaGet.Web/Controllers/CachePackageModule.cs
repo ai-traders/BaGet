@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -13,33 +14,26 @@ using NuGet.Versioning;
 
 namespace BaGet.Controllers
 {
-    public class PackageModule : CarterModule
+    public class CachePackageModule : CarterModule
     {
         private readonly IMirrorService _mirror;
-        private readonly IPackageService _packages;
-        private readonly IPackageStorageService _storage;
 
-        public PackageModule(IMirrorService mirror, IPackageService packageService, IPackageStorageService storage)
-            :base("v3/package")
+        public CachePackageModule(IMirrorService mirror)
+            :base("cache/v3/package")
         {
             _mirror = mirror ?? throw new ArgumentNullException(nameof(mirror));
-            _packages = packageService ?? throw new ArgumentNullException(nameof(packageService));
-            _storage = storage ?? throw new ArgumentNullException(nameof(storage));
 
             this.Get("/{id}/index.json", async (req, res, routeData) => {
                 string id = routeData.As<string>("id");
-                var packages = await _packages.FindAsync(id);
-
-                if (!packages.Any())
-                {
-                    res.StatusCode = 404;
+                IReadOnlyList<string> upstreamVersions = await _mirror.FindUpstreamAsync(id, CancellationToken.None);
+                if(upstreamVersions.Any()) {
+                    await res.AsJson(new
+                    {
+                        Versions = upstreamVersions.ToList()
+                    });
                     return;
                 }
-
-                await res.AsJson(new
-                {
-                    Versions = packages.Select(p => p.VersionString).ToList()
-                });
+                res.StatusCode = 404;
             });
 
             this.Get("/{id}/{version}/{idVersion}.nupkg", async (req, res, routeData) => {
@@ -55,14 +49,8 @@ namespace BaGet.Controllers
                 // Allow read-through caching if it is configured.
                 await _mirror.MirrorAsync(id, nugetVersion, CancellationToken.None);
 
-                if (!await _packages.IncrementDownloadCountAsync(id, nugetVersion))
-                {
-                     res.StatusCode = 404;
-                     return;
-                }
-
                 var identity = new PackageIdentity(id, nugetVersion);
-                var packageStream = await _storage.GetPackageStreamAsync(identity);
+                var packageStream = await _mirror.GetPackageStreamAsync(identity);
 
                 await res.FromStream(packageStream, "application/octet-stream");
             });
@@ -80,7 +68,7 @@ namespace BaGet.Controllers
                 // Allow read-through caching if it is configured.
                 await _mirror.MirrorAsync(id, nugetVersion, CancellationToken.None);
 
-                if (!await _packages.ExistsAsync(id, nugetVersion))
+                if (!await _mirror.ExistsAsync(new PackageIdentity(id, nugetVersion)))
                 {
                     res.StatusCode = 404;
                     return;
@@ -88,7 +76,7 @@ namespace BaGet.Controllers
 
                 var identity = new PackageIdentity(id, nugetVersion);
 
-                await res.FromStream(await _storage.GetNuspecStreamAsync(identity), "text/xml");
+                await res.FromStream(await _mirror.GetNuspecStreamAsync(identity), "text/xml");
             });
 
             this.Get("/{id}/{version}/readme", async (req, res, routeData) => {
@@ -104,7 +92,7 @@ namespace BaGet.Controllers
                 // Allow read-through caching if it is configured.
                 await _mirror.MirrorAsync(id, nugetVersion, CancellationToken.None);
 
-                if (!await _packages.ExistsAsync(id, nugetVersion))
+                if (!await _mirror.ExistsAsync(new PackageIdentity(id, nugetVersion)))
                 {
                     res.StatusCode = 404;
                     return;
@@ -112,7 +100,7 @@ namespace BaGet.Controllers
 
                 var identity = new PackageIdentity(id, nugetVersion);
 
-                await res.FromStream(await _storage.GetReadmeStreamAsync(identity), "text/markdown");
+                await res.FromStream(await _mirror.GetReadmeStreamAsync(identity), "text/markdown");
             });
         }
     }

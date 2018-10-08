@@ -75,7 +75,7 @@ namespace BaGet.Tests
         public async Task DownloadExistingPackage()
         {
             var pkgService = new Mock<IPackageService>(MockBehavior.Strict);
-            pkgService.Setup(p => p.AddDownloadAsync(It.IsAny<string>(), It.IsAny<NuGetVersion>())).ReturnsAsync(true);
+            pkgService.Setup(p => p.IncrementDownloadCountAsync(It.IsAny<string>(), It.IsAny<NuGetVersion>())).ReturnsAsync(true);
             var pkgStorageService = new Mock<IPackageStorageService>(MockBehavior.Strict);
             pkgStorageService.Setup(p => p.GetPackageStreamAsync(It.IsAny<PackageIdentity>()))
                 .ReturnsAsync(new MemoryStream(new byte[10]));
@@ -104,7 +104,7 @@ namespace BaGet.Tests
         public async Task DownloadNonExistingPackage()
         {
             var pkgService = new Mock<IPackageService>(MockBehavior.Strict);
-            pkgService.Setup(p => p.AddDownloadAsync(It.IsAny<string>(), It.IsAny<NuGetVersion>())).ReturnsAsync(false);
+            pkgService.Setup(p => p.IncrementDownloadCountAsync(It.IsAny<string>(), It.IsAny<NuGetVersion>())).ReturnsAsync(false);
             using (TestServer server = TestServerBuilder.Create()
                 .TraceToTestOutputHelper(Helper,LogLevel.Error)
                 .WithMock(typeof(IPackageService), pkgService)

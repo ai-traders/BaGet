@@ -9,12 +9,14 @@ namespace BaGet.Core.Services
 {
     public class FilePackageStorageService : IPackageStorageService
     {
-        private readonly string _storePath;
+        private readonly string _storePath;        
 
         public FilePackageStorageService(string storePath)
         {
             _storePath = storePath ?? throw new ArgumentNullException(nameof(storePath));
         }
+
+        public string RootPath { get { return _storePath; } }
 
         public async Task SavePackageStreamAsync(PackageArchiveReader package, Stream packageStream)
         {

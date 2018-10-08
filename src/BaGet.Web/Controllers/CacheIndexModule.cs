@@ -9,14 +9,15 @@ using Carter.ModelBinding;
 using Carter.Request;
 using Carter.Response;
 
-
 namespace BaGet.Web.Controllers
 {
     /// <summary>
     /// The NuGet Service Index. This aids NuGet client to discover this server's services.
     /// </summary>
-    public class IndexModule : CarterModule
+    public class CacheIndexModule : CarterModule
     {
+        string prefix = "cache";
+
         private IEnumerable<ServiceResource> ServiceWithAliases(string name, string url, params string[] versions)
         {
             foreach (var version in versions)
@@ -26,18 +27,18 @@ namespace BaGet.Web.Controllers
             }
         }
 
-        public IndexModule() {
-            this.Get("/v3/index.json", async (req, res, routeData) =>
+        public CacheIndexModule() {
+            this.Get(prefix + "/v3/index.json", async (req, res, routeData) =>
             {
                 await res.AsJson(new
                 {
                     Version = "3.0.0",
                     Resources =
-                        ServiceWithAliases("PackagePublish", req.PackagePublish(""), "2.0.0") // api.nuget.org returns this too.
-                        .Concat(ServiceWithAliases("SearchQueryService", req.PackageSearch(""), "", "3.0.0-beta", "3.0.0-rc")) // each version is an alias of others
-                        .Concat(ServiceWithAliases("RegistrationsBaseUrl", req.RegistrationsBase(""), "", "3.0.0-rc", "3.0.0-beta"))
-                        .Concat(ServiceWithAliases("PackageBaseAddress", req.PackageBase(""), "3.0.0"))
-                        .Concat(ServiceWithAliases("SearchAutocompleteService", req.PackageAutocomplete(""), "", "3.0.0-rc", "3.0.0-beta"))
+                        ServiceWithAliases("PackagePublish", req.PackagePublish(prefix), "2.0.0") // api.nuget.org returns this too.
+                        .Concat(ServiceWithAliases("SearchQueryService", req.PackageSearch(prefix), "", "3.0.0-beta", "3.0.0-rc")) // each version is an alias of others
+                        .Concat(ServiceWithAliases("RegistrationsBaseUrl", req.RegistrationsBase(prefix), "", "3.0.0-rc", "3.0.0-beta"))
+                        .Concat(ServiceWithAliases("PackageBaseAddress", req.PackageBase(prefix), "3.0.0"))
+                        .Concat(ServiceWithAliases("SearchAutocompleteService", req.PackageAutocomplete(prefix), "", "3.0.0-rc", "3.0.0-beta"))
                         .ToList()
                 });
             });

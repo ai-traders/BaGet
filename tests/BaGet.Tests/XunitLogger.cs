@@ -7,7 +7,7 @@ namespace BaGet.Tests
     //https://stackoverflow.com/questions/46169169/net-core-2-0-configurelogging-xunit-test
 
 
-    public class XunitLogger : ILogger
+    public class XunitLogger<T> : ILogger, ILogger<T>
     {
         private readonly ITestOutputHelper _testOutputHelper;
         private readonly string _categoryName;

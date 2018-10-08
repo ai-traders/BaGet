@@ -1,6 +1,8 @@
 ﻿using System.Collections.Generic;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using NuGet.Packaging.Core;
 using NuGet.Protocol.Core.Types;
 using NuGet.Versioning;
 
@@ -23,5 +25,10 @@ namespace BaGet.Core.Mirror
         Task<IReadOnlyList<string>> FindUpstreamAsync(string id, CancellationToken ct);
 
         Task<IEnumerable<IPackageSearchMetadata>> FindUpstreamMetadataAsync(string id, CancellationToken ct);
+        Task<Stream> GetPackageStreamAsync(PackageIdentity identity);
+        Task<bool> ExistsAsync(PackageIdentity identity);
+        Task<Stream> GetNuspecStreamAsync(PackageIdentity identity);
+        Task<Stream> GetReadmeStreamAsync(PackageIdentity identity);
+        Task<IPackageSearchMetadata> FindAsync(PackageIdentity identity);
     }
 }

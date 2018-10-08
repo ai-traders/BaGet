@@ -46,7 +46,7 @@ namespace BaGet.Web.Models
             Authors = string.Join(", ", package.Authors);
             Description = package.Description;
             Downloads = package.DownloadCount.GetValueOrDefault(0);
-            HasReadme = false; // 
+            HasReadme = false; //
             IconUrl = NullSafeToString(package.IconUrl);
             Language = null; //
             LicenseUrl = NullSafeToString(package.LicenseUrl);

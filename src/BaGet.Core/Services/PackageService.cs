@@ -76,7 +76,7 @@ namespace BaGet.Core.Services
             return TryUpdatePackageAsync(id, version, p => p.Listed = true);
         }
 
-        public Task<bool> AddDownloadAsync(string id, NuGetVersion version)
+        public Task<bool> IncrementDownloadCountAsync(string id, NuGetVersion version)
         {
             return TryUpdatePackageAsync(id, version, p => p.Downloads += 1);
         }

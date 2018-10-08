@@ -16,7 +16,10 @@ namespace BaGet.Tests
         }
 
         public ILogger CreateLogger(string categoryName)
-            => new XunitLogger(_testOutputHelper, categoryName);
+            => new XunitLogger<object>(_testOutputHelper, categoryName);
+        
+         public ILogger<T> CreateLogger<T>(string categoryName)
+            => new XunitLogger<T>(_testOutputHelper, categoryName);
 
         public void Dispose()
         { }
