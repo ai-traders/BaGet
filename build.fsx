@@ -184,6 +184,8 @@ Target.create "All" ignore
 "ExampleNuGets"
   ==> "RunIntegrationTests"
 
+"SpaPublish" ==> "Build"
+
 "Build" ==> "RunTests"
 "Build" ==> "RunIntegrationTests"
 "ExampleNuGets" ==> "RunTests"
