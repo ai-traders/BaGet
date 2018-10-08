@@ -1,4 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using BaGet.Core.Services;
 using Microsoft.AspNetCore.Http;
@@ -29,41 +32,53 @@ namespace BaGet.Controllers
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
+
         // See: https://docs.microsoft.com/en-us/nuget/api/package-publish-resource#push-a-package
-        public async Task Upload(IFormFile package)
+        public async Task Upload()
         {
-            if (package == null)
+            Stream uploadStream;
+            if (Request.Form.Files.Count > 0)
+            {
+                // If we're using the newer API, the package stream is sent as a file.
+                // use first and ignore the rest
+                // as in https://docs.microsoft.com/en-us/nuget/api/package-publish-resource#multipart-form-data
+                uploadStream = Request.Form.Files[0].OpenReadStream();
+            }
+            else
+            {
+                // old clients
+                uploadStream = Request.Body;
+            }
+            if (uploadStream == null)
             {
                 HttpContext.Response.StatusCode = 400;
-                return;
-            }
-
-            if (!await _authentication.AuthenticateAsync(ApiKey))
-            {
-                HttpContext.Response.StatusCode = 401;
+                _logger.LogWarning("package upload did not contain multipart/form-data or body");
                 return;
             }
 
             try
             {
-                using (var uploadStream = package.OpenReadStream())
+                if (!await _authentication.AuthenticateAsync(ApiKey))
                 {
-                    var result = await _indexer.IndexAsync(uploadStream);
+                    HttpContext.Response.StatusCode = 401;
+                    return;
+                }
+            
+                var result = await _indexer.IndexAsync(uploadStream);
 
-                    switch (result)
-                    {
-                        case IndexingResult.InvalidPackage:
-                            HttpContext.Response.StatusCode = 400;
-                            break;
+                switch (result)
+                {
+                    case IndexingResult.InvalidPackage:
+                        HttpContext.Response.StatusCode = 400;
+                        break;
 
-                        case IndexingResult.PackageAlreadyExists:
-                            HttpContext.Response.StatusCode = 409;
-                            break;
+                    case IndexingResult.PackageAlreadyExists:
+                        HttpContext.Response.StatusCode = 409;
+                        break;
 
-                        case IndexingResult.Success:
-                            HttpContext.Response.StatusCode = 201;
-                            break;
-                    }
+                    case IndexingResult.Success:
+                        HttpContext.Response.StatusCode = 201;
+                        break;
                 }
             }
             catch (Exception e)
@@ -71,6 +86,10 @@ namespace BaGet.Controllers
                 _logger.LogError(e, "Exception thrown during package upload");
 
                 HttpContext.Response.StatusCode = 500;
+            }
+            finally {
+                if(uploadStream != null)
+                    uploadStream.Dispose();
             }
         }
 
