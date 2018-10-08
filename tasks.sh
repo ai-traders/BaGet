@@ -4,6 +4,9 @@ set -e
 
 source .build/docker-ops
 
+# Fix for multi-line environment variables not working in docker envs
+unset TRAVIS_COMMIT_MESSAGE
+
 image_name_no_registry="baget"
 private_image_name="docker-registry.ai-traders.com/${image_name_no_registry}"
 public_image_name="tomzo/${image_name_no_registry}"
