@@ -21,7 +21,6 @@ sleep 4
 
 E2E_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd $E2E_DIR
-mono .paket/paket.bootstrapper.exe
 
 cat << EOF > $E2E_DIR/.paket/paket.bootstrapper.exe.config
 <?xml version="1.0" encoding="utf-8" ?>
@@ -32,6 +31,8 @@ cat << EOF > $E2E_DIR/.paket/paket.bootstrapper.exe.config
   </appSettings>
 </configuration>
 EOF
+
+mono $E2E_DIR/.paket/paket.bootstrapper.exe
 
 for test_dir in `find $E2E_DIR -mindepth 1 -type d -name 'test_*'`
 do
