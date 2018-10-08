@@ -299,3 +299,5 @@ __pycache__/
 /e2e/test_proxy/paket-constraint/paket.lock
 /e2e/test_one-exact-package/paket-pinned/paket.lock
 /e2e/data/cache/
+/e2e/stress/paket-*/
+/e2e/stress/paket/paket.lock

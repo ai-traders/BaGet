@@ -18,6 +18,8 @@ function make_clean_dir {
   rm -rf $dir && mkdir -p $dir && cd $dir
 }
 
+export E2E_PAKET_VERSION="5.181.1"
+
 command="$1"
 case "${command}" in
   _build)
@@ -51,13 +53,17 @@ case "${command}" in
     rm e2e/data/db/*
     rm -rf e2e/data/packages/*
     rm -rf e2e/data/cache/*
-    export E2E_PAKET_VERSION="5.181.1"
     ide --idefile Idefile.e2e-docker "./e2e/run.sh"
+    ;;
+  stress_docker)
+    source_imagerc "${image_dir}"  "${imagerc_filename}"
+    ide --idefile Idefile.e2e-docker "e2e/stress/run.sh"
     ;;
   all)
     ide "./build.sh --target All"
     ./tasks.sh build_docker
     ./tasks.sh test_docker
+    ./tasks.sh stress_docker
     ;;
   prepare_code_release)
     version=$2
