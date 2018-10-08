@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.com/ai-traders/BaGet.svg?branch=master)](https://travis-ci.com/ai-traders/BaGet)
+
 # BaGet :baguette_bread:
 
 A lightweight [NuGet service](https://docs.microsoft.com/en-us/nuget/api/overview) implementation.
