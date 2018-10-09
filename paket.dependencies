@@ -16,6 +16,7 @@ nuget Microsoft.Extensions.Logging.Abstractions
 nuget Microsoft.Extensions.Logging.Configuration
 nuget Microsoft.Extensions.Logging.Console
 nuget Microsoft.Extensions.Options.ConfigurationExtensions
+nuget Gelf.Extensions.Logging
 nuget morelinq
 nuget NuGet.Client
 nuget NuGet.Packaging
