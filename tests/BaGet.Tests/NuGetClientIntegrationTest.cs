@@ -26,10 +26,18 @@ namespace BaGet.Tests
     public class NuGetClientIntegrationTest : IDisposable
     {
         private const string CacheIndex = "cache/v3/index.json";
+        private const string CompatCacheIndex = "api/cache/v3/index.json";
         static readonly string MainIndex = "v3/index.json";
-        public static IEnumerable<object[]> TestCases = new[] {
+        static readonly string V2Index = "v2";
+        static readonly string CompatV2Index = "api/v2";
+        public static IEnumerable<object[]> V3Cases = new[] {
             new object[] { MainIndex },
             new object[] { CacheIndex },
+            new object[] { CompatCacheIndex },
+        };
+        public static IEnumerable<object[]> V2Cases = new[] {
+            new object[] { V2Index },
+            new object[] { CompatV2Index }
         };
         protected readonly ITestOutputHelper Helper;
         private readonly TestServer server;
@@ -85,7 +93,7 @@ namespace BaGet.Tests
         }
 
         [Theory]
-        [MemberData(nameof(TestCases))]
+        [MemberData(nameof(V3Cases))]
         public async Task GetIndexShouldReturn200(string indexEndpoint)
         {
             InitializeClient(indexEndpoint);
@@ -95,7 +103,17 @@ namespace BaGet.Tests
         }
 
         [Theory]
-        [MemberData(nameof(TestCases))]
+        [MemberData(nameof(V2Cases))]
+        public async Task GetV2IndexShouldReturn200(string indexEndpoint)
+        {
+            InitializeClient(indexEndpoint);
+            var index = await _httpClient.GetAsync(indexUrl);
+            Assert.Equal(HttpStatusCode.OK, index.StatusCode);
+            return;
+        }
+
+        [Theory]
+        [MemberData(nameof(V3Cases))]
         public async Task IndexResourceHasManyEntries(string indexEndpoint)
         {
             InitializeClient(indexEndpoint);
@@ -104,7 +122,17 @@ namespace BaGet.Tests
         }
 
         [Theory]
-        [MemberData(nameof(TestCases))]
+        [MemberData(nameof(V2Cases))]
+        public async Task V2IndexResourceReturnsODataServiceDocument(string indexEndpoint)
+        {
+            InitializeClient(indexEndpoint);
+            var indexResource = await _sourceRepository.GetResourceAsync<ODataServiceDocumentResourceV2>();
+            Assert.NotNull(indexResource);
+            Assert.Equal("http://localhost/" + indexEndpoint, indexResource.BaseAddress);
+        }
+
+        [Theory]
+        [MemberData(nameof(V3Cases))]
         public async Task IndexIncludesAtLeastOneSearchQueryEntry(string indexEndpoint)
         {
             InitializeClient(indexEndpoint);
@@ -113,7 +141,7 @@ namespace BaGet.Tests
         }
 
         [Theory]
-        [MemberData(nameof(TestCases))]
+        [MemberData(nameof(V3Cases))]
         public async Task IndexIncludesAtLeastOneRegistrationsBaseEntry(string indexEndpoint)
         {
             InitializeClient(indexEndpoint);
@@ -122,7 +150,7 @@ namespace BaGet.Tests
         }
 
         [Theory]
-        [MemberData(nameof(TestCases))]
+        [MemberData(nameof(V3Cases))]
         public async Task IndexIncludesAtLeastOnePackageBaseAddressEntry(string indexEndpoint)
         {
             InitializeClient(indexEndpoint);
@@ -131,7 +159,7 @@ namespace BaGet.Tests
         }
 
         [Theory]
-        [MemberData(nameof(TestCases))]
+        [MemberData(nameof(V3Cases))]
         public async Task IndexIncludesAtLeastOneSearchAutocompleteServiceEntry(string indexEndpoint)
         {
             InitializeClient(indexEndpoint);

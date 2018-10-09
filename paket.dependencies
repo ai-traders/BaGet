@@ -20,9 +20,14 @@ nuget Gelf.Extensions.Logging
 nuget morelinq
 nuget NuGet.Client
 nuget NuGet.Packaging
+nuget NuGet.Packaging.Core
 nuget NuGet.Protocol
 nuget WindowsAzure.Storage
 nuget carter
+nuget Microsoft.AspNetCore.OData.vNext 6.0.2-alpha-rtm
+nuget Microsoft.OData.Core
+nuget Microsoft.OData.Edm
+nuget Microsoft.Spatial
 
 group Tools
   source https://api.nuget.org/v3/index.json

@@ -8,7 +8,10 @@ using Newtonsoft.Json;
 using Carter.ModelBinding;
 using Carter.Request;
 using Carter.Response;
-
+using BaGet.Core.Configuration;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
+using System.Threading.Tasks;
 
 namespace BaGet.Web.Controllers
 {
@@ -27,7 +30,7 @@ namespace BaGet.Web.Controllers
         }
 
         public IndexModule() {
-            this.Get("/v3/index.json", async (req, res, routeData) =>
+            Func<HttpRequest, HttpResponse, RouteData, Task> indexHandler = async (req, res, routeData) =>
             {
                 await res.AsJson(new
                 {
@@ -40,7 +43,8 @@ namespace BaGet.Web.Controllers
                         .Concat(ServiceWithAliases("SearchAutocompleteService", req.PackageAutocomplete(""), "", "3.0.0-rc", "3.0.0-beta"))
                         .ToList()
                 });
-            });
+            };
+            this.Get("/v3/index.json", indexHandler);
         }
     }
 }

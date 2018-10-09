@@ -13,6 +13,8 @@ namespace BaGet.Web.Extensions
             return val.TrimEnd('/') + "/" + append.TrimStart('/');
         }
 
+        public static string V3Index(this HttpRequest request, string prefix) => request.AbsoluteUrl(prefix.UriCombine("v3/index.json"));
+
         public static string PackageBase(this HttpRequest request, string prefix) => request.AbsoluteUrl(prefix.UriCombine("v3/package/"));
         public static string RegistrationsBase(this HttpRequest request, string prefix) => request.AbsoluteUrl(prefix.UriCombine("v3/registration/"));
 
@@ -47,6 +49,17 @@ namespace BaGet.Web.Extensions
         public static string AbsoluteUrl(this HttpRequest request, string relativePath)
         {
             return new Uri(new Uri(request.Scheme + "://" + request.Host.Value), relativePath).ToString();
+        }
+
+        public static Uri GetUri(this HttpRequest request)
+        {
+            var builder = new UriBuilder();
+            builder.Scheme = request.Scheme;
+            builder.Host = request.Host.Host;
+            builder.Port = request.Host.Port ?? 80;
+            builder.Path = request.Path;
+            builder.Query = request.QueryString.ToUriComponent();
+            return builder.Uri;
         }
     }
 }

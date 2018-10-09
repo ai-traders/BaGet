@@ -74,6 +74,14 @@ case "${command}" in
     source_imagerc "${image_dir}"  "${imagerc_filename}"
     ide --idefile Idefile.e2e-docker "e2e/stress/run.sh"
     ;;
+  liget_compat_docker)
+    source_imagerc "${image_dir}"  "${imagerc_filename}"
+    rm -rf e2e/liget-compat/data/db/*
+    rm -rf e2e/liget-compat/data/packages/*
+    rm -rf e2e/liget-compat/data/cache/*
+    export LiGetCompat__Enabled=true
+    ide --idefile Idefile.liget-compat "e2e/liget-compat/run.sh"
+    ;;
   all)
     ide "./build.sh --target All"
     ./tasks.sh build_docker
