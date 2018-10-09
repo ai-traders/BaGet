@@ -15,14 +15,12 @@ namespace BaGet.Controllers
 {
     public class PackageModule : CarterModule
     {
-        private readonly IMirrorService _mirror;
         private readonly IPackageService _packages;
         private readonly IPackageStorageService _storage;
 
-        public PackageModule(IMirrorService mirror, IPackageService packageService, IPackageStorageService storage)
+        public PackageModule(IPackageService packageService, IPackageStorageService storage)
             :base("v3/package")
         {
-            _mirror = mirror ?? throw new ArgumentNullException(nameof(mirror));
             _packages = packageService ?? throw new ArgumentNullException(nameof(packageService));
             _storage = storage ?? throw new ArgumentNullException(nameof(storage));
 
@@ -52,9 +50,6 @@ namespace BaGet.Controllers
                     return;
                 }
 
-                // Allow read-through caching if it is configured.
-                await _mirror.MirrorAsync(id, nugetVersion, CancellationToken.None);
-
                 if (!await _packages.IncrementDownloadCountAsync(id, nugetVersion))
                 {
                      res.StatusCode = 404;
@@ -77,9 +72,6 @@ namespace BaGet.Controllers
                     return;
                 }
 
-                // Allow read-through caching if it is configured.
-                await _mirror.MirrorAsync(id, nugetVersion, CancellationToken.None);
-
                 if (!await _packages.ExistsAsync(id, nugetVersion))
                 {
                     res.StatusCode = 404;
@@ -100,9 +92,6 @@ namespace BaGet.Controllers
                     res.StatusCode = 400;
                     return;
                 }
-
-                // Allow read-through caching if it is configured.
-                await _mirror.MirrorAsync(id, nugetVersion, CancellationToken.None);
 
                 if (!await _packages.ExistsAsync(id, nugetVersion))
                 {
