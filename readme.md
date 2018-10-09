@@ -12,6 +12,7 @@ About this fork:
  - implements read-through cache, which [does not work upstream](https://github.com/loic-sharma/BaGet/issues/93)
  - uses paket and FAKE for build system. [PR](https://github.com/loic-sharma/BaGet/pull/108)
  - uses [Carter](https://github.com/CarterCommunity/Carter) for routing rather than bare Asp routing.
+ - adds ability to log to graylog
  - we intend to merge all this upstream, but review is slow and we need working server now.
  - we intend to move V2 from LiGet to BaGet.
 
@@ -30,6 +31,17 @@ For persistent data, you should mount **volumes**:
 
 You should change the default api key (`NUGET-SERVER-API-KEY`) used for pushing packages,
 by setting SHA256 into `ApiKeyHash` environment variable.
+
+### Logging to graylog
+
+BaGet is using [GELF provider for Microsoft.Extensions.Logging](https://github.com/mattwcole/gelf-extensions-logging)
+to optionally configure logging via GELF to graylog.
+To configure docker image for logging to your graylog, you can set following environment variables:
+```
+Graylog__Host=your-graylog.com
+Graylog__Port=12201
+Graylog__AdditionalFields__environment=development
+```
 
 ## On client side
 

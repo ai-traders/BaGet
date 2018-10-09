@@ -4,4 +4,5 @@ Microsoft.Data.SQLite
 Microsoft.EntityFrameworkCore.Sqlite
 Microsoft.Extensions.Logging.Configuration
 Microsoft.Extensions.Logging.Console
+Gelf.Extensions.Logging
 NuGet.Client
