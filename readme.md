@@ -155,3 +155,7 @@ Otherwise it is a full release, tagged as `<version>`.
 3. Submit a PR, travis will run all tests.
 4. Address issues in the review and build failures.
 5. Before merge rebase on master `git rebase -i master` and possibly squash some of the commits.
+
+### Issues
+
+If you have an idea or found a bug, open an issue to discuss it.
