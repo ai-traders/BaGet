@@ -16,8 +16,8 @@ cat << EOF > /home/ide/.nuget/NuGet/NuGet.Config
 </configuration>
 EOF
 
-echo "Sleeping 4s to wait for server to be ready"
-sleep 4
+echo "Sleeping 10s to wait for server to be ready"
+sleep 10
 
 COMPAT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 E2E_DIR="$COMPAT_DIR/.."
@@ -37,9 +37,8 @@ EOF
 
 mono $E2E_DIR/.paket/paket.bootstrapper.exe
 
-# BaGet would have all private packages imported already
+# BaGet running with BAGET_IMPORT_ON_BOOT should have all private packages imported already
 cd $E2E_DIR/input
-dotnet nuget push baget-two/bin/Debug/baget-two.2.1.0.nupkg --source http://nuget:9090/v3/index.json --api-key NUGET-SERVER-API-KEY
 
 cd $COMPAT_DIR/paket
 rm -rf paket-files

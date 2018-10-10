@@ -14,6 +14,22 @@ namespace BaGet.Tests.Support
             throw new FileNotFoundException("Could not find file in any of the paths:\n" + string.Join('\n',paths));
         }
 
+         public static string GetDirectory(params string[] paths) {
+            foreach(var dir in paths) 
+            {
+                if(Directory.Exists(dir))
+                    return dir;
+            }
+            throw new FileNotFoundException("Could not find directory in any of the paths:\n" + string.Join('\n',paths));
+        }
+
+        public static string GetE2eInputDirectory() {
+            return GetDirectory(
+                "e2e/input",
+                "/ide/work/e2e/input"
+            );            
+        }
+
         public static string GetNupkgBagetTest1()
         {
             return GetFile(
