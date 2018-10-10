@@ -46,7 +46,7 @@ namespace BaGet.Tests
         public async Task AskServerForVersionsOfExistingPackageID()
         {
             var pkgService = new Mock<IPackageService>(MockBehavior.Strict);
-            pkgService.Setup(p => p.FindAsync("abc", false)).ReturnsAsync(new Package[] {
+            pkgService.Setup(p => p.FindAsync("abc", false, false)).ReturnsAsync(new Package[] {
                 new Package() { Id = "abc", VersionString = "1.2.3" },
                 new Package() { Id = "abc", VersionString = "1.4.7" }
             });

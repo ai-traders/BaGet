@@ -7,9 +7,15 @@ load '/opt/bats-assert/load.bash'
   assert_equal "$status" 0
 }
 
-@test "nuget install exact package version" {
+@test "nuget install exact package version via V3" {
   run /bin/bash -c "cd nuget && nuget install baget-test1 -Version 1.0.0 -DisableParallelProcessing -NoCache -Source http://baget:9090/v3/index.json"
   assert_output --partial "http://baget:9090/v3/index.json"
+  assert_equal "$status" 0
+}
+
+@test "nuget install exact package version via V2" {
+  run /bin/bash -c "cd nuget2 && nuget install baget-test1 -Version 1.0.0 -DisableParallelProcessing -NoCache -Source http://baget:9090/v2"
+  assert_output --partial "http://baget:9090/v2"
   assert_equal "$status" 0
 }
 

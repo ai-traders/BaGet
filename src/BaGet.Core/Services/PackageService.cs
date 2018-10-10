@@ -40,7 +40,7 @@ namespace BaGet.Core.Services
                 .Where(p => p.VersionString == version.ToNormalizedString())
                 .AnyAsync();
 
-        public async Task<IReadOnlyList<Package>> FindAsync(string id, bool includeUnlisted = false)
+        public async Task<IReadOnlyList<Package>> FindAsync(string id, bool includeUnlisted = false, bool includeDeps = false)
         {
             var query = _context.Packages.Where(p => p.Id == id);
 
@@ -49,10 +49,15 @@ namespace BaGet.Core.Services
                 query = query.Where(p => p.Listed);
             }
 
+            if(includeDeps)
+            {
+                query = query.Include(p => p.Dependencies);
+            }
+
             return (await query.ToListAsync()).AsReadOnly();
         }
 
-        public Task<Package> FindAsync(string id, NuGetVersion version, bool includeUnlisted = false)
+        public Task<Package> FindAsync(string id, NuGetVersion version, bool includeUnlisted = false, bool includeDeps = false)
         {
             var query = _context.Packages
                 .Where(p => p.Id == id)
@@ -61,6 +66,11 @@ namespace BaGet.Core.Services
             if (!includeUnlisted)
             {
                 query = query.Where(p => p.Listed);
+            }
+
+            if(includeDeps)
+            {
+                query = query.Include(p => p.Dependencies);
             }
 
             return query.FirstOrDefaultAsync();

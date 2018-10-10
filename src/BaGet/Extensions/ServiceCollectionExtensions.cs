@@ -11,6 +11,7 @@ using BaGet.Core;
 using BaGet.Core.Configuration;
 using BaGet.Core.Entities;
 using BaGet.Core.Extensions;
+using BaGet.Core.Legacy.OData;
 using BaGet.Core.Mirror;
 using BaGet.Core.Services;
 using BaGet.Entities;
@@ -25,6 +26,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.OData.Edm;
 
 namespace BaGet.Extensions
 {
@@ -167,6 +169,20 @@ namespace BaGet.Extensions
 
         public static IServiceCollection ConfigureHttpServices(this IServiceCollection services)
         {
+            services.AddTransient<LiGetCompatibilityOptions, LiGetCompatibilityOptions>(provider =>
+                provider
+                    .GetRequiredService<IOptions<BaGetOptions>>()
+                    .Value
+                    .LiGetCompat
+            );
+
+            services.AddSingleton<IEdmModel>(provider => {
+                var odataModelBuilder = new NuGetWebApiODataModelBuilder();
+                odataModelBuilder.Build();
+                return odataModelBuilder.Model;
+            });
+            services.AddTransient<IODataPackageSerializer, ODataPackageSerializer>();
+
             AddCarter(services);
             services.AddCors();
             services.AddSingleton<IConfigureOptions<CorsOptions>, ConfigureCorsOptions>();

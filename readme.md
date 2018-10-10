@@ -13,8 +13,9 @@ About this fork:
  - uses paket and FAKE for build system. [PR](https://github.com/loic-sharma/BaGet/pull/108)
  - uses [Carter](https://github.com/CarterCommunity/Carter) for routing rather than bare Asp routing.
  - adds ability to log to graylog
+ - adds V2 implementation from LiGet to BaGet.
+ - adds compatibility mode with LiGet to ease migration to BaGet.
  - we intend to merge all this upstream, but review is slow and we need working server now.
- - we intend to move V2 from LiGet to BaGet.
 
 # Usage
 
@@ -90,6 +91,28 @@ source http://baget:9090/cache/v3/index.json
 source http://baget:9090/v3/index.json
 # private packages...
 ```
+
+## Migrating from LiGet
+
+If you have been using LiGet before, then many of your nuget sources in projects,
+ could look like this, e.g. in paket:
+```
+source http://my-nuget.com/api/cache/v3/index.json
+# public packages
+
+source http://my-nuget.com/api/v2
+# private packages
+```
+Above endpoints end up in `paket.lock` too.
+BaGet has different endpoints (no `/api` before endpoints).
+If you want to deploy BaGet in place of LiGet and (at least temporarily) keep above endpoints,
+you can enable LiGet compatibity mode in BaGet.
+```
+LiGetCompat__Enabled=true
+```
+This will enable following behavior:
+ - `/api/cache/v3/index.json` returns same content as original BaGet's `/cache/v3/index.json`.
+ - `/api/v2/*` returns **V2** resources, same as `/v2/*`
 
 # Development
 

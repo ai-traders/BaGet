@@ -1,3 +1,9 @@
+### 0.2.0 - Unreleased
+
+ * Added V2 implementation from LiGet
+ * Added compatibility mode with LiGet to keep the same endpoints
+ * V2 includes dependencies in package query results
+
 ### 0.1.0 (2018-Nov-09)
 
 First release with a changelog.
