@@ -114,6 +114,21 @@ This will enable following behavior:
  - `/api/cache/v3/index.json` returns same content as original BaGet's `/cache/v3/index.json`.
  - `/api/v2/*` returns **V2** resources, same as `/v2/*`
 
+### Importing packages
+
+To make transition from LiGet or any other server which keeps `.nupkg` files in a directory,
+there is an `import` command:
+```
+dotnet BaGet.dll import --path dir
+```
+In the docker image you can setup environment variable - `BAGET_IMPORT_ON_BOOT=/data/simple`
+which will cause baget to first search for `nupkg` files in `$BAGET_IMPORT_ON_BOOT`, before starting server.
+Packages which were already added are skipped.
+Setting `BAGET_IMPORT_ON_BOOT=/data/simple` is sufficient for migration from LiGet.
+
+*Note: you only need to set this variable once to perform initial migration.
+You should unset it in later deployments to avoid uncessary scanning.*
+
 # Development
 
 We rely heavily on docker to create reproducible development environment.

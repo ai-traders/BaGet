@@ -80,6 +80,7 @@ case "${command}" in
     rm -rf e2e/liget-compat/data/packages/*
     rm -rf e2e/liget-compat/data/cache/*
     export LiGetCompat__Enabled=true
+    export BAGET_IMPORT_ON_BOOT=/data/simple
     ide --idefile Idefile.liget-compat "e2e/liget-compat/run.sh"
     ;;
   all)
@@ -87,7 +88,7 @@ case "${command}" in
     ./tasks.sh build_docker
     ./tasks.sh test_docker
     ./tasks.sh liget_compat_docker
-    ./tasks.sh stress_docker    
+    ./tasks.sh stress_docker
     ;;
   prepare_code_release)
     version=$2

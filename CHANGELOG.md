@@ -4,6 +4,7 @@
  * Added compatibility mode with LiGet to keep the same endpoints
  * V2 includes dependencies in package query results
  * Switch production base image to slim stretch
+ * added importer to complete migration from LiGet
 
 ### 0.1.0 (2018-Nov-09)
 

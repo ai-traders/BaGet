@@ -55,6 +55,8 @@ namespace BaGet.Extensions
             services.ConfigureSearchProviders();
             services.ConfigureAuthenticationProviders();
 
+            services.AddTransient<PackageImporter, PackageImporter>();
+
             return services;
         }
 
