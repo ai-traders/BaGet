@@ -40,7 +40,10 @@ namespace BaGet.Tests
             Authors = new [] { "Anton Setiawan" },
             LicenseUrl = new Uri("https://github.com/antonmaju/dummy/blob/master/LICENSE"),
             MinClientVersion = null,
-            Published = DateTime.Parse("1900-01-01T00:00:00")
+            Published = DateTime.Parse("1900-01-01T00:00:00"),
+            Dependencies = new List<Core.Entities.PackageDependency>() {
+                new Core.Entities.PackageDependency() { Id="Consul", VersionRange="[0.7.2.6, )", TargetFramework=".NETStandard2.0" }
+            }
         };
 
         private void AssertDummyEntry(V2FeedPackageInfo dummyEntry)
@@ -52,6 +55,7 @@ namespace BaGet.Tests
             Assert.Equal(dummy1_0_0.LicenseUrl.AbsoluteUri, dummyEntry.LicenseUrl);
             Assert.Null(dummyEntry.MinClientVersion);
             Assert.Equal(dummy1_0_0.Published, dummyEntry.Published);
+            Assert.Equal("Consul:[0.7.2.6, ):.NETStandard2.0", dummyEntry.Dependencies);
         }
 
         public PackagesV2ModuleTest(ITestOutputHelper helper)
@@ -114,21 +118,21 @@ namespace BaGet.Tests
         [Theory]
         [MemberData(nameof(V2Cases))]
         public async Task GetPackagesSpecifiedIdAndVersionEmptyRepository(string index) {
-            packageRepo.Setup(r => r.FindAsync(It.IsAny<string>(), It.IsAny<NuGetVersion>(), It.IsAny<bool>()))
+            packageRepo.Setup(r => r.FindAsync(It.IsAny<string>(), It.IsAny<NuGetVersion>(), It.IsAny<bool>(), It.IsAny<bool>()))
                 .ReturnsAsync(null as Package).Verifiable();
             using (TestServer server = serverBuilder.Build())
             {
                 var httpClient = server.CreateClient();                
                 var result = await httpClient.GetAsync(index + "/Packages(Id='dummy',Version='1.0.0')");
                 Assert.Equal(HttpStatusCode.NotFound, result.StatusCode);
-                packageRepo.Verify(r => r.FindAsync("dummy",NuGetVersion.Parse("1.0.0"), false), Times.Exactly(1));
+                packageRepo.Verify(r => r.FindAsync("dummy",NuGetVersion.Parse("1.0.0"), false, true), Times.Exactly(1));
             }
         }
 
         [Theory]
         [MemberData(nameof(V2Cases))]
         public async Task GetPackagesSpecifiedIdAndVersionWhenExists(string index) {
-            packageRepo.Setup(r => r.FindAsync(It.IsAny<string>(),It.IsAny<NuGetVersion>(), It.IsAny<bool>()))
+            packageRepo.Setup(r => r.FindAsync(It.IsAny<string>(),It.IsAny<NuGetVersion>(), It.IsAny<bool>(), It.IsAny<bool>()))
                 .ReturnsAsync(dummy1_0_0).Verifiable();
             using (TestServer server = serverBuilder.Build())
             {
@@ -136,7 +140,7 @@ namespace BaGet.Tests
                 var result = await httpClient.GetAsync(index + "/Packages(Id='dummy',Version='1.0.0')");
                 Assert.Equal(HttpStatusCode.OK, result.StatusCode);
                 Assert.Equal("application/atom+xml", result.Content.Headers.ContentType.MediaType);
-                packageRepo.Verify(r => r.FindAsync("dummy",NuGetVersion.Parse("1.0.0"), false), Times.Exactly(1));
+                packageRepo.Verify(r => r.FindAsync("dummy",NuGetVersion.Parse("1.0.0"), false, true), Times.Exactly(1));
                 var responseText = await result.Content.ReadAsStringAsync();               
                 var entries = XmlFeedHelper.ParsePage(XDocument.Parse(responseText));
                 var dummyEntry = Assert.Single(entries);
@@ -147,7 +151,7 @@ namespace BaGet.Tests
         [Theory]
         [MemberData(nameof(V2Cases))]
         public async Task GetPackageContentWhenExists(string index) {
-            packageRepo.Setup(r => r.FindAsync(It.IsAny<string>(),It.IsAny<NuGetVersion>(), It.IsAny<bool>()))
+            packageRepo.Setup(r => r.FindAsync(It.IsAny<string>(),It.IsAny<NuGetVersion>(), It.IsAny<bool>(), It.IsAny<bool>()))
                 .ReturnsAsync(dummy1_0_0).Verifiable();
             packageRepo.Setup(r => r.IncrementDownloadCountAsync(It.IsAny<string>(),It.IsAny<NuGetVersion>()))
                 .ReturnsAsync(true);
@@ -171,14 +175,14 @@ namespace BaGet.Tests
         [InlineData("'aaabbb'")]
         [Theory]
         public async Task FindPackageByIdWhenEmptyRepository(string queryName) {
-            packageRepo.Setup(r => r.FindAsync(It.IsAny<string>(), It.IsAny<bool>()))
+            packageRepo.Setup(r => r.FindAsync(It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<bool>()))
                 .ReturnsAsync(new List<Package>()).Verifiable();
             using (TestServer server = serverBuilder.Build())
             {
                 var httpClient = server.CreateClient(); 
                 var result = await httpClient.GetAsync("/v2/FindPackagesById()?id=" + queryName);
                 Assert.Equal(HttpStatusCode.OK, result.StatusCode);
-                packageRepo.Verify(r => r.FindAsync("aaabbb", false), Times.Exactly(1));
+                packageRepo.Verify(r => r.FindAsync("aaabbb", false, true), Times.Exactly(1));
                 Assert.Equal("application/atom+xml", result.Content.Headers.ContentType.MediaType);
                 var responseText = await result.Content.ReadAsStringAsync();      
                 var entries = XmlFeedHelper.ParsePage(XDocument.Parse(responseText));
@@ -190,14 +194,14 @@ namespace BaGet.Tests
         [Theory]
         [MemberData(nameof(V2Cases))]
         public async Task FindPackageByIdWhenOneFound(string index) {
-            packageRepo.Setup(r => r.FindAsync(It.IsAny<string>(), It.IsAny<bool>()))
+            packageRepo.Setup(r => r.FindAsync(It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<bool>()))
                 .ReturnsAsync(new List<Package>() { dummy1_0_0 }).Verifiable();
                 using (TestServer server = serverBuilder.Build())
             {
                 var httpClient = server.CreateClient(); 
                 var result = await httpClient.GetAsync(index + "/FindPackagesById()?id=dummy");
                 Assert.Equal(HttpStatusCode.OK, result.StatusCode);
-                packageRepo.Verify(r => r.FindAsync("dummy", false), Times.Exactly(1));
+                packageRepo.Verify(r => r.FindAsync("dummy", false, true), Times.Exactly(1));
                 Assert.Equal("application/atom+xml", result.Content.Headers.ContentType.MediaType);
                 var responseText = await result.Content.ReadAsStringAsync();      
                 var entries = XmlFeedHelper.ParsePage(XDocument.Parse(responseText));

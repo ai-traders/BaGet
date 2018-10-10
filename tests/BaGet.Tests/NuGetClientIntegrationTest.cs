@@ -17,6 +17,9 @@ using FluentValidation;
 using NuGet.Packaging.Core;
 using NuGet.Versioning;
 using System.IO;
+using System.Xml.Linq;
+using Microsoft.Extensions.DependencyInjection;
+using BaGet.Core.Services;
 
 namespace BaGet.Tests
 {
@@ -167,6 +170,30 @@ namespace BaGet.Tests
             Assert.NotEmpty(indexResource.GetServiceEntries("SearchAutocompleteService"));
         }
 
+        [Fact]
+        [Trait("Category", "integration")] // because it uses external nupkg files
+        public async Task GetV2FindPackagesById()
+        {
+            InitializeClient(MainIndex);
+            var packageResource = await _sourceRepository.GetResourceAsync<PackageUpdateResource>();
+            await packageResource.Push(TestResources.GetNupkgBagetTest1(),
+                null, 5, false, GetApiKey, GetApiKey, false, logger);
+            var response = await _httpClient.GetAsync("/v2/FindPackagesById()?id=baget-test1");
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            var responseText = await response.Content.ReadAsStringAsync();               
+            var entries = XmlFeedHelper.ParsePage(XDocument.Parse(responseText));
+            var entry = Assert.Single(entries);
+            AssertBaGetTestEntry(entry);
+        }
+
+        private void AssertBaGetTestEntry(V2FeedPackageInfo dummyEntry)
+        {
+            Assert.Equal("baget-test1", dummyEntry.Id);
+            Assert.Equal(NuGetVersion.Parse("1.0.0"), dummyEntry.Version);
+            Assert.Equal("baget-test1", dummyEntry.Authors.Single());
+            Assert.Equal("::netstandard2.0", dummyEntry.Dependencies);
+        }
+
         // Push
         [Fact]
         [Trait("Category", "integration")] // because it uses external nupkg files
@@ -181,6 +208,24 @@ namespace BaGet.Tests
             Assert.NotEmpty(meta);
             var one = meta.First();
             Assert.Equal(new PackageIdentity("baget-test1", NuGetVersion.Parse("1.0.0")), one.Identity);
+        }
+
+        [Fact]
+        [Trait("Category", "integration")] // because it uses external nupkg files
+        public async Task PushedPackageShouldExistWithPackageDependenciesInPackageService()
+        {
+            InitializeClient(MainIndex);
+            var packageResource = await _sourceRepository.GetResourceAsync<PackageUpdateResource>();
+            await packageResource.Push(TestResources.GetNupkgBagetTest1(),
+                null, 5, false, GetApiKey, GetApiKey, false, logger);
+
+            var packageService = server.Host.Services.GetRequiredService<IPackageService>();
+            Assert.True(await packageService.ExistsAsync("baget-test1", NuGetVersion.Parse("1.0.0")));
+            var found = await packageService.FindAsync("baget-test1", NuGetVersion.Parse("1.0.0"), false, true);
+            Assert.NotNull(found.Dependencies);
+            Assert.NotEmpty(found.Dependencies);
+            var one = found.Dependencies.Single();
+            Assert.Equal("netstandard2.0", one.TargetFramework);
         }
 
         [Fact]

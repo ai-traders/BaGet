@@ -15,8 +15,8 @@ namespace BaGet.Core.Services
     {
         Task<PackageAddResult> AddAsync(Package package);
 
-        Task<Package> FindAsync(string id, NuGetVersion version, bool includeUnlisted = false);
-        Task<IReadOnlyList<Package>> FindAsync(string id, bool includeUnlisted = false);
+        Task<Package> FindAsync(string id, NuGetVersion version, bool includeUnlisted = false, bool includeDependencies = false);
+        Task<IReadOnlyList<Package>> FindAsync(string id, bool includeUnlisted = false, bool includeDependencies = false);
 
         Task<bool> ExistsAsync(string id, NuGetVersion version);
         Task<bool> UnlistPackageAsync(string id, NuGetVersion version);

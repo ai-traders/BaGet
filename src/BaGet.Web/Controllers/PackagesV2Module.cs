@@ -83,7 +83,7 @@ namespace BaGet.Web.Controllers
                         var idOrNull = uriParser.CustomQueryOptions.FirstOrDefault(o => o.Key.ToLowerInvariant() == "id").Value;
                         string id = idOrNull.TrimStart('\'').TrimEnd('\'');
                         _log.LogDebug("Request to FindPackagesById id={0}",id);
-                        var found = await _packageService.FindAsync(id);
+                        var found = await _packageService.FindAsync(id, false, true);
                         var odata = new ODataResponse<IEnumerable<PackageWithUrls>>(serviceUrl, found.Select(f => ToPackageWithUrls(req, f)));
                         using(var ms = new MemoryStream()) {
                             serializer.Serialize(ms, odata.Entity, odata.ServiceBaseUrl);
@@ -111,7 +111,7 @@ namespace BaGet.Web.Controllers
                             string id = queryParams.Keys.First(k => k.Key == "Id").Value as string;
                             string version = queryParams.Keys.First(k => k.Key == "Version").Value as string;
                             _log.LogDebug("Request to find package by id={0} and version={1}", id, version);
-                            var found = await _packageService.FindAsync(id, NuGetVersion.Parse(version));
+                            var found = await _packageService.FindAsync(id, NuGetVersion.Parse(version), false, true);
                             if(found == null) {
                                 res.StatusCode = 404;
                                 return;
