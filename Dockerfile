@@ -1,4 +1,4 @@
-FROM microsoft/dotnet:2.1.402-sdk-stretch
+FROM microsoft/dotnet:2.1.4-aspnetcore-runtime-stretch-slim
 EXPOSE 9090
 
 RUN apt-get update && apt-get install -y sudo &&\
