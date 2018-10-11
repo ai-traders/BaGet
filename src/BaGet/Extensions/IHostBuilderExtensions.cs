@@ -13,12 +13,12 @@ namespace BaGet.Extensions
         public static IHostBuilder ConfigureBaGetConfiguration(this IHostBuilder builder, string[] args)
         {
             return builder.ConfigureAppConfiguration((context, config) =>
-            {
-                config.AddEnvironmentVariables();
-
+            {               
                 config
                     .SetBasePath(Environment.CurrentDirectory)
                     .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
+
+                config.AddEnvironmentVariables();
 
                 if (args != null)
                 {
