@@ -76,6 +76,7 @@ case "${command}" in
     ;;
   liget_compat_docker)
     source_imagerc "${image_dir}"  "${imagerc_filename}"
+    ide "./tasks.sh _build_inputs"
     rm -rf e2e/liget-compat/data/db/*
     rm -rf e2e/liget-compat/data/packages/*
     rm -rf e2e/liget-compat/data/cache/*
