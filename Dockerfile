@@ -29,6 +29,7 @@ ENV ASPNETCORE_ENVIRONMENT=Production \
     Mirror__PackagesPath="/var/baget/cache" \
     Search__Type=Database
 
+
 COPY /src/BaGet/bin/Release/netcoreapp2.1/publish/ /app
 
 ADD docker-scripts/run.sh /app/run.sh

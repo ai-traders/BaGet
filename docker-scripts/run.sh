@@ -56,6 +56,7 @@ chown $NEWUID:$NEWGID -R /home/baget
 # Start server
 ###########################################################################
 
+cd /app
 if [ ! -z ${BAGET_IMPORT_ON_BOOT+x} ]; then
   if [[ $NEWGID != 0 ]]; then
     sudo -u baget -E -H dotnet /app/BaGet.dll import --path ${BAGET_IMPORT_ON_BOOT}
@@ -65,7 +66,6 @@ if [ ! -z ${BAGET_IMPORT_ON_BOOT+x} ]; then
   fi
 fi
 
-cd /app
 if [[ $NEWGID != 0 ]]; then
   exec sudo -u baget -E -H dotnet /app/BaGet.dll
 else
