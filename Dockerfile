@@ -12,7 +12,7 @@ RUN chmod +x /tini
 ENTRYPOINT ["/tini", "--"]
 
 RUN mkdir -p /home/baget /home/baget/.nuget/NuGet &&\
-    mkdir -p /var/baget/packages /var/baget/db &&\
+    mkdir -p /var/baget/packages /var/baget/db /var/baget/cache &&\
     groupadd -g 1000 baget &&\
     useradd -d /home/baget -s /bin/bash -u 1000 -g baget baget &&\
     chown -R baget:baget /home/baget /var/baget/
@@ -28,6 +28,7 @@ ENV ASPNETCORE_ENVIRONMENT=Production \
     Mirror__UpstreamIndex="https://api.nuget.org/v3/index.json" \
     Mirror__PackagesPath="/var/baget/cache" \
     Search__Type=Database
+
 
 COPY /src/BaGet/bin/Release/netcoreapp2.1/publish/ /app
 

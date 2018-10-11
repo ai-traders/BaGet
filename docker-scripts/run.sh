@@ -1,6 +1,17 @@
 #!/bin/bash
 set -e
 
+DIRECTORY="/var/baget/packages"
+OWNER_USERNAME="baget"
+OWNER_GROUPNAME="baget"
+
+# First deployment bootstrap, we might want to change permissions of mounted volumes
+if [ ! -f /var/baget/db/sqlite.db ]; then
+  echo "Database does not exist yet. Setting up directory access"
+  mkdir -p /var/baget/packages /var/baget/db /var/baget/cache
+  chown -R baget:baget /var/baget/
+fi
+
 ###########################################################################
 # Used as fix-uid-gid solution in docker, almost copied from:
 # https://github.com/tomzo/docker-uid-gid-fix/blob/master/fix-uid-gid.sh
@@ -8,9 +19,6 @@ set -e
 
 # This is the directory we expect to be mounted as docker volume.
 # From that directory we know uid and gid.
-DIRECTORY="/var/baget/packages"
-OWNER_USERNAME="baget"
-OWNER_GROUPNAME="baget"
 
 if [ ! -d "$DIRECTORY" ]; then
   echo "$DIRECTORY does not exist, expected to be mounted as docker volume"
@@ -48,11 +56,16 @@ chown $NEWUID:$NEWGID -R /home/baget
 # Start server
 ###########################################################################
 
+cd /app
 if [ ! -z ${BAGET_IMPORT_ON_BOOT+x} ]; then
-  sudo -u baget -E -H dotnet /app/BaGet.dll import --path ${BAGET_IMPORT_ON_BOOT}
+  if [[ $NEWGID != 0 ]]; then
+    sudo -u baget -E -H dotnet /app/BaGet.dll import --path ${BAGET_IMPORT_ON_BOOT}
+  else
+    echo "WARNING: running baget as root"
+    dotnet /app/BaGet.dll import --path ${BAGET_IMPORT_ON_BOOT}
+  fi
 fi
 
-cd /app
 if [[ $NEWGID != 0 ]]; then
   exec sudo -u baget -E -H dotnet /app/BaGet.dll
 else
