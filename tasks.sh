@@ -68,6 +68,7 @@ case "${command}" in
     rm -rf e2e/data/db/*
     rm -rf e2e/data/packages/*
     rm -rf e2e/data/cache/*
+    rm e2e/test_*/nuget*/*/ -rf
     ide --idefile Idefile.e2e-docker "./e2e/run.sh"
     ;;
   stress_docker)
