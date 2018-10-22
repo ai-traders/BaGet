@@ -1,5 +1,8 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using BaGet.Core.Entities;
+using BaGet.Core.Legacy;
 using Newtonsoft.Json;
 using NuGet.Protocol.Core.Types;
 
@@ -15,7 +18,7 @@ namespace BaGet.Web.Models
 
             PackageId = package.Id;
             Version = package.VersionString;
-            Authors = string.Join(", ", package.Authors);
+            Authors = package.Authors == null ? null : string.Join(", ", package.Authors);
             Description = package.Description;
             Downloads = package.Downloads;
             HasReadme = package.HasReadme;
@@ -33,6 +36,54 @@ namespace BaGet.Web.Models
             Summary = package.Summary;
             Tags = package.Tags;
             Title = package.Title;
+            DependencyGroups = ToDependencyGroups(package.Dependencies, catalogUri);
+        }
+
+        public static DependencyGroup[] ToDependencyGroups(List<Core.Entities.PackageDependency> dependencies, string catalogUri)
+        {
+            if(dependencies == null || !dependencies.Any())
+                return null;
+
+            var groups = new List<DependencyGroup>();
+            var frameworkDeps = dependencies.Where(d => d.IsFrameworkDependency()).Select(d => d.TargetFramework).Distinct();
+            foreach(var frameworkDep in frameworkDeps) {
+                var g = new DependencyGroup() {
+                    CatalogUrl = catalogUri + $"#dependencygroup/.{frameworkDep}",
+                    TargetFramework = frameworkDep
+                };
+                groups.Add(g);
+            }
+            // empty string key implies no target framework
+            Dictionary<string, List<PackageDependency>> dependenciesByFramework = new Dictionary<string, List<PackageDependency>>();
+            foreach (var packageDependency in dependencies.Where(d => !d.IsFrameworkDependency()))
+            {
+                var dep = new PackageDependency() {
+                    Id = packageDependency.Id,
+                    Range = packageDependency.VersionRange
+                };
+                string framework = packageDependency.TargetFramework == null ? "" : packageDependency.TargetFramework;
+                List<PackageDependency> deps = new List<PackageDependency>();
+                if (!dependenciesByFramework.TryGetValue(framework, out deps)) {
+                    deps = new List<PackageDependency>();
+                    dependenciesByFramework.Add(framework, deps);
+                }
+                deps.Add(dep);
+            }
+            var perFrameworkDeps = 
+                dependenciesByFramework.GroupBy(d => d.Key)
+                .Select(grouppedDeps => new DependencyGroup() {         
+                    CatalogUrl = catalogUri + "#dependencygroup",           
+                    TargetFramework = string.IsNullOrEmpty(grouppedDeps.Key) ? null : grouppedDeps.Key,
+                    Dependencies = grouppedDeps.SelectMany(d => d.Value)
+                        .Select(d => new PackageDependency() {
+                            CatalogUrl = catalogUri + $"#dependencygroup/.{grouppedDeps.Key}/{d.Id}",
+                            Id = d.Id,
+                            Range = d.Range,
+                            //TODO Registration
+                        }).ToArray()
+                });
+
+            return groups.Concat(perFrameworkDeps).ToArray();
         }
 
         public CatalogEntry(IPackageSearchMetadata package, string catalogUri, string packageContent)
@@ -95,5 +146,7 @@ namespace BaGet.Web.Models
         public string Summary { get; }
         public string[] Tags { get; }
         public string Title { get; }
+
+        public DependencyGroup[] DependencyGroups { get; }
     }
 }

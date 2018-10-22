@@ -36,7 +36,7 @@ namespace BaGet.Core.Legacy
             return string.Join("|", texts);
         }
 
-        private static bool IsFrameworkDependency(Entities.PackageDependency dependency)
+        public static bool IsFrameworkDependency(this Entities.PackageDependency dependency)
         {
             return dependency.Id == null && dependency.VersionRange == null;
         }
