@@ -4,6 +4,7 @@ using System.Linq;
 using BaGet.Core.Entities;
 using BaGet.Core.Legacy;
 using Newtonsoft.Json;
+using NuGet.Frameworks;
 using NuGet.Protocol.Core.Types;
 
 namespace BaGet.Web.Models
@@ -73,7 +74,7 @@ namespace BaGet.Web.Models
                 dependenciesByFramework.GroupBy(d => d.Key)
                 .Select(grouppedDeps => 
                 {
-                    var framework = string.IsNullOrEmpty(grouppedDeps.Key) ? "any" : grouppedDeps.Key;
+                    var framework = string.IsNullOrEmpty(grouppedDeps.Key) ? null : grouppedDeps.Key;
                     var g = new DependencyGroup() {         
                         CatalogUrl = catalogUri + "#dependencygroup",           
                         TargetFramework = framework,
@@ -123,7 +124,11 @@ namespace BaGet.Web.Models
         public static DependencyGroup[] ToDependencyGroups(IEnumerable<NuGet.Packaging.PackageDependencyGroup> dependencies, string catalogUri)
         {
             return dependencies.Select(grouppedDeps => {
-                string targetFramework = grouppedDeps.TargetFramework == null ? "any" : grouppedDeps.TargetFramework.GetShortFolderName();
+                string targetFramework;
+                if(grouppedDeps.TargetFramework == null || grouppedDeps.TargetFramework.Equals(NuGetFramework.AnyFramework))
+                    targetFramework = null;
+                else
+                    targetFramework = grouppedDeps.TargetFramework.GetShortFolderName();
                 string catalogForGroup = catalogUri + "#dependencygroup";
                 if(!grouppedDeps.Packages.Any())
                     catalogForGroup = catalogUri + $"#dependencygroup/.{targetFramework}";

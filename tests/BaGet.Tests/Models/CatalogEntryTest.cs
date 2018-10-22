@@ -88,7 +88,7 @@ namespace BaGet.Tests.Models
             var result = CatalogEntry.ToDependencyGroups(anyFrameworkPackageDeps, "http://catalog/package.json");
             var deps = result.First();
             Assert.Equal(new string[] { "dep1", "dep2" }, deps.Dependencies.Select(d => d.Id));
-            Assert.All(result, r => Assert.Equal("any", r.TargetFramework));
+            Assert.All(result, r => Assert.Null(r.TargetFramework));
         }
 
         [Fact]
@@ -97,7 +97,7 @@ namespace BaGet.Tests.Models
             var result = CatalogEntry.ToDependencyGroups(nugetAnyFrameworkPackageDeps, "http://catalog/package.json");
             var deps = result.First();
             Assert.Equal(new string[] { "dep1", "dep2" }, deps.Dependencies.Select(d => d.Id));
-            Assert.All(result, r => Assert.Equal("any", r.TargetFramework));
+            Assert.All(result, r => Assert.Null(r.TargetFramework));
         }
     }
 }
