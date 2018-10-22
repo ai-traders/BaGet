@@ -11,7 +11,7 @@ namespace BaGet.Web.Models
 {
     public class CatalogEntry
     {
-        public CatalogEntry(Package package, string catalogUri, string packageContent)
+        public CatalogEntry(Package package, string catalogUri, string packageContent, Func<string, Uri> getRegistrationUrl)
         {
             if (package == null) throw new ArgumentNullException(nameof(package));
 
@@ -37,10 +37,11 @@ namespace BaGet.Web.Models
             Summary = package.Summary;
             Tags = package.Tags;
             Title = package.Title;
-            DependencyGroups = ToDependencyGroups(package.Dependencies, catalogUri);
+            DependencyGroups = ToDependencyGroups(package.Dependencies, catalogUri, getRegistrationUrl);
         }
 
-        public static DependencyGroup[] ToDependencyGroups(List<Core.Entities.PackageDependency> dependencies, string catalogUri)
+        public static DependencyGroup[] ToDependencyGroups(List<Core.Entities.PackageDependency> dependencies, 
+            string catalogUri, Func<string, Uri> getRegistrationUrl)
         {
             if(dependencies == null || !dependencies.Any())
                 return null;
@@ -75,15 +76,18 @@ namespace BaGet.Web.Models
                 .Select(grouppedDeps => 
                 {
                     var framework = string.IsNullOrEmpty(grouppedDeps.Key) ? null : grouppedDeps.Key;
+                    string catalogForGroup = catalogUri + "#dependencygroup";
+                    if(framework != null)
+                        catalogForGroup = catalogUri + $"#dependencygroup/.{framework}";
                     var g = new DependencyGroup() {         
-                        CatalogUrl = catalogUri + "#dependencygroup",           
+                        CatalogUrl = catalogForGroup,           
                         TargetFramework = framework,
                         Dependencies = grouppedDeps.SelectMany(d => d.Value)
                             .Select(d => new PackageDependency() {
                                 CatalogUrl = catalogUri + $"#dependencygroup/.{grouppedDeps.Key}/{d.Id}",
                                 Id = d.Id,
                                 Range = d.Range,
-                                //TODO Registration
+                                Registration = getRegistrationUrl(d.Id).AbsoluteUri
                             }).ToArray()
                     };
                     return g;
@@ -92,7 +96,7 @@ namespace BaGet.Web.Models
             return groups.Concat(perFrameworkDeps).ToArray();
         }
 
-        public CatalogEntry(IPackageSearchMetadata package, string catalogUri, string packageContent)
+        public CatalogEntry(IPackageSearchMetadata package, string catalogUri, string packageContent, Func<string, Uri> getRegistrationUrl)
         {
             if (package == null) throw new ArgumentNullException(nameof(package));
 
@@ -118,10 +122,11 @@ namespace BaGet.Web.Models
             Summary = package.Summary;
             Tags = package.Tags == null ? null : package.Tags.Split(',');
             Title = package.Title;
-            DependencyGroups = ToDependencyGroups(package.DependencySets, catalogUri);
+            DependencyGroups = ToDependencyGroups(package.DependencySets, catalogUri, getRegistrationUrl);
         }
 
-        public static DependencyGroup[] ToDependencyGroups(IEnumerable<NuGet.Packaging.PackageDependencyGroup> dependencies, string catalogUri)
+        public static DependencyGroup[] ToDependencyGroups(IEnumerable<NuGet.Packaging.PackageDependencyGroup> dependencies, string catalogUri,
+            Func<string, Uri> getRegistrationUrl)
         {
             return dependencies.Select(grouppedDeps => {
                 string targetFramework;
@@ -130,7 +135,7 @@ namespace BaGet.Web.Models
                 else
                     targetFramework = grouppedDeps.TargetFramework.GetShortFolderName();
                 string catalogForGroup = catalogUri + "#dependencygroup";
-                if(!grouppedDeps.Packages.Any())
+                if(targetFramework != null)
                     catalogForGroup = catalogUri + $"#dependencygroup/.{targetFramework}";
                 var g = new DependencyGroup() {         
                     CatalogUrl = catalogForGroup,           
@@ -140,7 +145,7 @@ namespace BaGet.Web.Models
                             CatalogUrl = catalogUri + $"#dependencygroup/.{targetFramework}/{d.Id}",
                             Id = d.Id,
                             Range = d.VersionRange.ToNormalizedString(),
-                            //TODO Registration
+                            Registration = getRegistrationUrl(d.Id).AbsoluteUri
                         }).ToArray()
                 };
                 if(g.Dependencies.Length == 0)

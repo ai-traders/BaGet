@@ -103,7 +103,8 @@ namespace BaGet.Controllers.Web.Registration
                 catalogEntry: new CatalogEntry(
                     package: package,
                     catalogUri: $"https://api.nuget.org/v3/catalog0/data/2015.02.01.06.24.15/{package.Identity.Id}.{package.Identity.Version}.json",
-                    packageContent: request.PackageDownload(package.Identity.Id, package.Identity.Version, "cache")),
+                    packageContent: request.PackageDownload(package.Identity.Id, package.Identity.Version, "cache"),
+                    getRegistrationUrl: id => new System.Uri(request.PackageRegistration(id, "cache"))),
                 packageContent: request.PackageDownload(package.Identity.Id, package.Identity.Version, "cache"));
 
     }

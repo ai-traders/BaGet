@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using BaGet.Web.Models;
@@ -46,10 +47,14 @@ namespace BaGet.Tests.Models
             })
         };
 
+        private static System.Uri GetRegistrationUrl(string packageid) {
+            return new Uri($"http://packages/{packageid}.json");
+        }
+
         [Fact]
         public void EntityToDependencyGroups_ShouldIncludeFrameworkDependencies()
         {
-            var result = CatalogEntry.ToDependencyGroups(frameworkDeps, "http://catalog/package.json");
+            var result = CatalogEntry.ToDependencyGroups(frameworkDeps, "http://catalog/package.json", GetRegistrationUrl);
             Assert.All(result, r => Assert.Null(r.Dependencies));
             Assert.Equal(new string[] { "netstandard2.0", "net35" }, result.Select(s => s.TargetFramework));
         }
@@ -57,7 +62,7 @@ namespace BaGet.Tests.Models
         [Fact]
         public void NuGetGroupsToDependencyGroups_ShouldIncludeFrameworkDependencies()
         {
-            var result = CatalogEntry.ToDependencyGroups(nugetFrameworkDeps, "http://catalog/package.json");
+            var result = CatalogEntry.ToDependencyGroups(nugetFrameworkDeps, "http://catalog/package.json", GetRegistrationUrl);
             Assert.All(result, r => Assert.Null(r.Dependencies));
             Assert.Equal(new string[] { "netstandard2.0", "net35" }, result.Select(s => s.TargetFramework));
         }
@@ -65,7 +70,7 @@ namespace BaGet.Tests.Models
         [Fact]
         public void EntityToDependencyGroups_ShouldGroupPerFrameworkDepsTogether()
         {
-            var result = CatalogEntry.ToDependencyGroups(packagePerFrameworkDeps, "http://catalog/package.json");
+            var result = CatalogEntry.ToDependencyGroups(packagePerFrameworkDeps, "http://catalog/package.json", GetRegistrationUrl);
             var netstd2 = result.First(n => n.TargetFramework == "netstandard2.0");
             Assert.Equal(new string[] { "dep1", "depX" }, netstd2.Dependencies.Select(d => d.Id));
             var net35 = result.First(n => n.TargetFramework == "net35");
@@ -75,7 +80,7 @@ namespace BaGet.Tests.Models
         [Fact]
         public void NuGetGroupsToDependencyGroups_ShouldGroupPerFrameworkDepsTogether()
         {
-            var result = CatalogEntry.ToDependencyGroups(nugetPackagePerFrameworkDeps, "http://catalog/package.json");
+            var result = CatalogEntry.ToDependencyGroups(nugetPackagePerFrameworkDeps, "http://catalog/package.json", GetRegistrationUrl);
             var netstd2 = result.First(n => n.TargetFramework == "netstandard2.0");
             Assert.Equal(new string[] { "dep1", "depX" }, netstd2.Dependencies.Select(d => d.Id));
             var net35 = result.First(n => n.TargetFramework == "net35");
@@ -85,7 +90,7 @@ namespace BaGet.Tests.Models
         [Fact]
         public void EntityToDependencyGroups_ShouldGroupDependenciesWithoutFrameworkTogether()
         {
-            var result = CatalogEntry.ToDependencyGroups(anyFrameworkPackageDeps, "http://catalog/package.json");
+            var result = CatalogEntry.ToDependencyGroups(anyFrameworkPackageDeps, "http://catalog/package.json", GetRegistrationUrl);
             var deps = result.First();
             Assert.Equal(new string[] { "dep1", "dep2" }, deps.Dependencies.Select(d => d.Id));
             Assert.All(result, r => Assert.Null(r.TargetFramework));
@@ -94,7 +99,7 @@ namespace BaGet.Tests.Models
         [Fact]
         public void NuGetGroupsToDependencyGroups_ShouldGroupDependenciesWithoutFrameworkTogether()
         {
-            var result = CatalogEntry.ToDependencyGroups(nugetAnyFrameworkPackageDeps, "http://catalog/package.json");
+            var result = CatalogEntry.ToDependencyGroups(nugetAnyFrameworkPackageDeps, "http://catalog/package.json", GetRegistrationUrl);
             var deps = result.First();
             Assert.Equal(new string[] { "dep1", "dep2" }, deps.Dependencies.Select(d => d.Id));
             Assert.All(result, r => Assert.Null(r.TargetFramework));
