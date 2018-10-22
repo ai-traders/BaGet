@@ -22,3 +22,8 @@ load '/opt/bats-assert/load.bash'
   assert_equal "$status" 0
   assert [ -e 'paket-constraint/packages/log4net/log4net.2.0.8.nupkg' ]
 }
+
+@test "paket.lock has dependencies" {
+  run /bin/bash -c "cat paket-constraint/paket.lock"
+  assert_output --partial "(>="
+}

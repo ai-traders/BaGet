@@ -1,13 +1,17 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using BaGet.Core.Entities;
+using BaGet.Core.Legacy;
 using Newtonsoft.Json;
+using NuGet.Frameworks;
 using NuGet.Protocol.Core.Types;
 
 namespace BaGet.Web.Models
 {
     public class CatalogEntry
     {
-        public CatalogEntry(Package package, string catalogUri, string packageContent)
+        public CatalogEntry(Package package, string catalogUri, string packageContent, Func<string, Uri> getRegistrationUrl)
         {
             if (package == null) throw new ArgumentNullException(nameof(package));
 
@@ -15,7 +19,7 @@ namespace BaGet.Web.Models
 
             PackageId = package.Id;
             Version = package.VersionString;
-            Authors = string.Join(", ", package.Authors);
+            Authors = package.Authors == null ? null : string.Join(", ", package.Authors);
             Description = package.Description;
             Downloads = package.Downloads;
             HasReadme = package.HasReadme;
@@ -33,9 +37,66 @@ namespace BaGet.Web.Models
             Summary = package.Summary;
             Tags = package.Tags;
             Title = package.Title;
+            DependencyGroups = ToDependencyGroups(package.Dependencies, catalogUri, getRegistrationUrl);
         }
 
-        public CatalogEntry(IPackageSearchMetadata package, string catalogUri, string packageContent)
+        public static DependencyGroup[] ToDependencyGroups(List<Core.Entities.PackageDependency> dependencies, 
+            string catalogUri, Func<string, Uri> getRegistrationUrl)
+        {
+            if(dependencies == null || !dependencies.Any())
+                return null;
+
+            var groups = new List<DependencyGroup>();
+            var frameworkDeps = dependencies.Where(d => d.IsFrameworkDependency()).Select(d => d.TargetFramework).Distinct();
+            foreach(var frameworkDep in frameworkDeps) {
+                var g = new DependencyGroup() {
+                    CatalogUrl = catalogUri + $"#dependencygroup/.{frameworkDep}",
+                    TargetFramework = frameworkDep
+                };
+                groups.Add(g);
+            }
+            // empty string key implies no target framework
+            Dictionary<string, List<PackageDependency>> dependenciesByFramework = new Dictionary<string, List<PackageDependency>>();
+            foreach (var packageDependency in dependencies.Where(d => !d.IsFrameworkDependency()))
+            {
+                var dep = new PackageDependency() {
+                    Id = packageDependency.Id,
+                    Range = packageDependency.VersionRange
+                };
+                string framework = packageDependency.TargetFramework == null ? "" : packageDependency.TargetFramework;
+                List<PackageDependency> deps = new List<PackageDependency>();
+                if (!dependenciesByFramework.TryGetValue(framework, out deps)) {
+                    deps = new List<PackageDependency>();
+                    dependenciesByFramework.Add(framework, deps);
+                }
+                deps.Add(dep);
+            }
+            var perFrameworkDeps = 
+                dependenciesByFramework.GroupBy(d => d.Key)
+                .Select(grouppedDeps => 
+                {
+                    var framework = string.IsNullOrEmpty(grouppedDeps.Key) ? null : grouppedDeps.Key;
+                    string catalogForGroup = catalogUri + "#dependencygroup";
+                    if(framework != null)
+                        catalogForGroup = catalogUri + $"#dependencygroup/.{framework}";
+                    var g = new DependencyGroup() {         
+                        CatalogUrl = catalogForGroup,           
+                        TargetFramework = framework,
+                        Dependencies = grouppedDeps.SelectMany(d => d.Value)
+                            .Select(d => new PackageDependency() {
+                                CatalogUrl = catalogUri + $"#dependencygroup/.{grouppedDeps.Key}/{d.Id}",
+                                Id = d.Id,
+                                Range = d.Range,
+                                Registration = getRegistrationUrl(d.Id).AbsoluteUri
+                            }).ToArray()
+                    };
+                    return g;
+                });
+
+            return groups.Concat(perFrameworkDeps).ToArray();
+        }
+
+        public CatalogEntry(IPackageSearchMetadata package, string catalogUri, string packageContent, Func<string, Uri> getRegistrationUrl)
         {
             if (package == null) throw new ArgumentNullException(nameof(package));
 
@@ -61,6 +122,36 @@ namespace BaGet.Web.Models
             Summary = package.Summary;
             Tags = package.Tags == null ? null : package.Tags.Split(',');
             Title = package.Title;
+            DependencyGroups = ToDependencyGroups(package.DependencySets, catalogUri, getRegistrationUrl);
+        }
+
+        public static DependencyGroup[] ToDependencyGroups(IEnumerable<NuGet.Packaging.PackageDependencyGroup> dependencies, string catalogUri,
+            Func<string, Uri> getRegistrationUrl)
+        {
+            return dependencies.Select(grouppedDeps => {
+                string targetFramework;
+                if(grouppedDeps.TargetFramework == null || grouppedDeps.TargetFramework.Equals(NuGetFramework.AnyFramework))
+                    targetFramework = null;
+                else
+                    targetFramework = grouppedDeps.TargetFramework.GetShortFolderName();
+                string catalogForGroup = catalogUri + "#dependencygroup";
+                if(targetFramework != null)
+                    catalogForGroup = catalogUri + $"#dependencygroup/.{targetFramework}";
+                var g = new DependencyGroup() {         
+                    CatalogUrl = catalogForGroup,           
+                    TargetFramework = targetFramework,
+                    Dependencies = grouppedDeps.Packages
+                        .Select(d => new PackageDependency() {
+                            CatalogUrl = catalogUri + $"#dependencygroup/.{targetFramework}/{d.Id}",
+                            Id = d.Id,
+                            Range = d.VersionRange.ToNormalizedString(),
+                            Registration = getRegistrationUrl(d.Id).AbsoluteUri
+                        }).ToArray()
+                };
+                if(g.Dependencies.Length == 0)
+                    g.Dependencies = null;
+                return g;
+                }).ToArray();
         }
 
         private string NullSafeToString(object prop)
@@ -95,5 +186,7 @@ namespace BaGet.Web.Models
         public string Summary { get; }
         public string[] Tags { get; }
         public string Title { get; }
+
+        public DependencyGroup[] DependencyGroups { get; }
     }
 }

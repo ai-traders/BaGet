@@ -32,7 +32,7 @@ namespace BaGet.Controllers.Web.Registration
             {
                 string id = routeData.As<string>("id");
                 // Documentation: https://docs.microsoft.com/en-us/nuget/api/registration-base-url-resource
-                var packages = await _packages.FindAsync(id);
+                var packages = await _packages.FindAsync(id, includeUnlisted: false, includeDependencies: true);
                 var versions = packages.Select(p => p.Version).ToList();
 
                 if (!packages.Any())
@@ -71,7 +71,7 @@ namespace BaGet.Controllers.Web.Registration
                     return;
                 }
 
-                var package = await _packages.FindAsync(id, nugetVersion);
+                var package = await _packages.FindAsync(id, nugetVersion, false, includeDependencies: false);
 
                 if (package == null)
                 {
@@ -98,7 +98,8 @@ namespace BaGet.Controllers.Web.Registration
                 catalogEntry: new CatalogEntry(
                     package: package,
                     catalogUri: $"https://api.nuget.org/v3/catalog0/data/2015.02.01.06.24.15/{package.Id}.{package.Version}.json",
-                    packageContent: request.PackageDownload(package.Id, package.Version, "")),
+                    packageContent: request.PackageDownload(package.Id, package.Version, ""),
+                    getRegistrationUrl: id => new System.Uri(request.PackageRegistration(id, ""))),
                 packageContent: request.PackageDownload(package.Id, package.Version, ""));
     }
 }

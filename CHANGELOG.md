@@ -1,4 +1,8 @@
-### 0.2.0 (2018-Nov-11)
+### 0.2.1 (2018-Oct-22)
+
+ * Fixed missing dependencies in V3 endpoints \#12
+
+### 0.2.0 (2018-Oct-11)
 
  * Added V2 implementation from LiGet
  * Added compatibility mode with LiGet to keep the same endpoints
@@ -7,7 +11,7 @@
  * added importer to complete migration from LiGet
  * fix/adjust for deployments with root-owned volumes
 
-### 0.1.0 (2018-Nov-09)
+### 0.1.0 (2018-Oct-09)
 
 First release with a changelog.
  - added unit, integration tests and e2e tests with paket and nuget cli.
