@@ -2,6 +2,7 @@
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using BaGet.Core.Entities;
 using BaGet.Core.Extensions;
 using NuGet.Packaging;
 using NuGet.Packaging.Core;
@@ -23,40 +24,44 @@ namespace BaGet.Core.Services
 
         public string RootPath { get { return _storePath; } }
 
-        public async Task SavePackageStreamAsync(
-            PackageArchiveReader package,
+         public async Task SavePackageContentAsync(
+            Package package,
             Stream packageStream,
-            CancellationToken cancellationToken)
+            Stream nuspecStream,
+            Stream readmeStream,
+            CancellationToken cancellationToken = default(CancellationToken))
         {
-            var identity = await package.GetIdentityAsync(cancellationToken);
-            var lowercasedId = identity.Id.ToLowerInvariant();
-            var lowercasedNormalizedVersion = identity.Version.ToNormalizedString().ToLowerInvariant();
+            package = package ?? throw new ArgumentNullException(nameof(package));
+            packageStream = packageStream ?? throw new ArgumentNullException(nameof(packageStream));
+            nuspecStream = nuspecStream ?? throw new ArgumentNullException(nameof(nuspecStream));
 
-            var packagePath = PackagePath(lowercasedId, lowercasedNormalizedVersion);
-            var nuspecPath = NuspecPath(lowercasedId, lowercasedNormalizedVersion);
-            var readmePath = ReadmePath(lowercasedId, lowercasedNormalizedVersion);
+            var lowercasedId = package.Id.ToLowerInvariant();
+            var lowercasedNormalizedVersion = package.VersionString.ToLowerInvariant();
 
             EnsurePathExists(lowercasedId, lowercasedNormalizedVersion);
 
-            // TODO: Uploads should be idempotent. This should fail if and only if the blob
-            // already exists but has different content.
-            using (var fileStream = File.Open(packagePath, FileMode.CreateNew))
-            {
-                packageStream.Seek(0, SeekOrigin.Begin);
+            await SaveFileStreamAsync(
+                lowercasedId,
+                lowercasedNormalizedVersion,
+                PackagePath,
+                packageStream,
+                cancellationToken);
 
-                await packageStream.CopyToAsync(fileStream, DefaultCopyBufferSize, cancellationToken);
-            }
+            await SaveFileStreamAsync(
+                lowercasedId,
+                lowercasedNormalizedVersion,
+                NuspecPath,
+                nuspecStream,
+                cancellationToken);
 
-            using (var nuspec = await package.GetNuspecAsync(cancellationToken))
-            using (var fileStream = File.Open(nuspecPath, FileMode.CreateNew))
+            if (readmeStream != null)
             {
-                await nuspec.CopyToAsync(fileStream, DefaultCopyBufferSize, cancellationToken);
-            }
-
-            using (var readme = package.GetReadme())
-            using (var fileStream = File.Open(readmePath, FileMode.CreateNew))
-            {
-                await readme.CopyToAsync(fileStream, DefaultCopyBufferSize, cancellationToken);
+                await SaveFileStreamAsync(
+                    lowercasedId,
+                    lowercasedNormalizedVersion,
+                    ReadmePath,
+                    readmeStream,
+                    cancellationToken);
             }
         }
 
@@ -81,6 +86,23 @@ namespace BaGet.Core.Services
             return Task.FromResult(readmeStream);
         }
 
+        private async Task SaveFileStreamAsync(
+            string lowercasedId,
+            string lowercasedNormalizedVersion,
+            Func<string, string, string> pathFunc,
+            Stream content,
+            CancellationToken cancellationToken)
+        {
+            var path = pathFunc(lowercasedId, lowercasedNormalizedVersion);
+
+            // TODO: Uploads should be idempotent. This should fail if and only if the blob
+            // already exists but has different content.
+            using (var fileStream = File.Open(path, FileMode.CreateNew))
+            {
+                await content.CopyToAsync(fileStream, DefaultCopyBufferSize, cancellationToken);
+            }
+        }
+
         public Task DeleteAsync(PackageIdentity id)
         {
             var lowercasedId = id.Id.ToLowerInvariant();
@@ -90,9 +112,15 @@ namespace BaGet.Core.Services
             var nuspecPath = NuspecPath(lowercasedId, lowercasedNormalizedVersion);
             var readmePath = ReadmePath(lowercasedId, lowercasedNormalizedVersion);
 
-            File.Delete(packagePath);
-            File.Delete(nuspecPath);
-            File.Delete(readmePath);
+            try
+            {
+                File.Delete(packagePath);
+                File.Delete(nuspecPath);
+                File.Delete(readmePath);
+            }
+            catch (DirectoryNotFoundException)
+            {
+            }
 
             return Task.CompletedTask;
         }

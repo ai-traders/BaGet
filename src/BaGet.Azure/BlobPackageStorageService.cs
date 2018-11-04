@@ -2,6 +2,7 @@
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using BaGet.Core.Entities;
 using BaGet.Core.Extensions;
 using BaGet.Core.Services;
 using Microsoft.WindowsAzure.Storage;
@@ -23,36 +24,6 @@ namespace BaGet.Azure.Configuration
         public BlobPackageStorageService(CloudBlobContainer container)
         {
             _container = container ?? throw new ArgumentNullException(nameof(container));
-        }
-
-        public async Task SavePackageStreamAsync(
-            PackageArchiveReader package,
-            Stream packageStream,
-            CancellationToken cancellationToken)
-        {
-            var identity = await package.GetIdentityAsync(cancellationToken);
-            var lowercasedId = identity.Id.ToLowerInvariant();
-            var lowercasedNormalizedVersion = identity.Version.ToNormalizedString().ToLowerInvariant();
-
-            var packageBlob = GetPackageBlob(lowercasedId, lowercasedNormalizedVersion);
-            var nuspecBlob = GetNuspecBlob(lowercasedId, lowercasedNormalizedVersion);
-            var readmeBlob = GetReadmeBlob(lowercasedId, lowercasedNormalizedVersion);
-
-            // Save the package's nupkg
-            packageStream.Seek(0, SeekOrigin.Begin);
-            await UploadBlobAsync(packageBlob, packageStream, PackageContentType);
-
-            // Save the package's nuspec
-            using (var nuspecStream = await package.GetNuspecAsync(cancellationToken))
-            {
-                await UploadBlobAsync(nuspecBlob, nuspecStream, TextContentType);
-            }
-
-            // Save the package's reamde
-            using (var readmeStream = package.GetReadme())
-            {
-                await UploadBlobAsync(readmeBlob, readmeStream, TextContentType);
-            }
         }
 
         public async Task DeleteAsync(PackageIdentity id)
@@ -153,6 +124,11 @@ namespace BaGet.Azure.Configuration
                 lowercasedId,
                 lowercasedNormalizedVersion,
                 "readme");
+        }
+
+        public Task SavePackageContentAsync(Package package, Stream packageStream, Stream nuspecStream, Stream readmeStream, CancellationToken cancellationToken)
+        {
+            throw new NotImplementedException();
         }
     }
 }

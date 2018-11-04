@@ -33,208 +33,110 @@ namespace BaGet.Core.Services
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        public async Task<IndexingResult> IndexAsync(Stream stream, CancellationToken cancellationToken)
+        public async Task<IndexingResult> IndexAsync(Stream packageStream, CancellationToken cancellationToken)
         {
-            // Try to save the package stream to storage.
+            // Try to extract all the necessary information from the package.
             Package package;
+            Stream nuspecStream;
+            Stream readmeStream;
 
             try
             {
-                using (var packageReader = new PackageArchiveReader(stream))
+                using (var packageReader = new PackageArchiveReader(packageStream, leaveStreamOpen: true))
                 {
-                    var packageId = packageReader.NuspecReader.GetId();
-                    var packageVersion = packageReader.NuspecReader.GetVersion();
+                    package = packageReader.GetPackageMetadata();
+                    nuspecStream = await packageReader.GetNuspecAsync(cancellationToken);
 
-                    if (await _packages.ExistsAsync(new PackageIdentity(packageId, packageVersion)))
+                    if (package.HasReadme)
                     {
-                        return IndexingResult.PackageAlreadyExists;
+                        readmeStream = await packageReader.GetReadmeAsync(cancellationToken);
                     }
-
-                    try
+                    else
                     {
-                        _logger.LogInformation(
-                            "Persisting package {Id} {Version} content to storage...",
-                            packageId,
-                            packageVersion.ToNormalizedString());
-
-                        await _storage.SavePackageStreamAsync(packageReader, stream, cancellationToken);
-                    }
-                    catch (Exception e)
-                    {
-                        // This may happen due to concurrent pushes.
-                        // TODO: Make IStorageService.SaveAsync return a result enum so this can be properly handled.
-                        _logger.LogError(e, "Failed to save package {PackageId} {PackageVersion} to storage", packageId, packageVersion);
-
-                        throw;
-                    }
-
-                    try
-                    {
-                        package = GetPackageMetadata(packageReader);
-                    }
-                    catch (Exception e)
-                    {
-                        _logger.LogError(
-                            e,
-                            "Failed to extract metadata for package {PackageId} {PackageVersion}",
-                            packageId,
-                            packageVersion);
-
-                        throw;
+                        readmeStream = null;
                     }
                 }
             }
             catch (Exception e)
             {
-                _logger.LogError(e, "Uploaded package is invalid or the package already existed in storage");
+                _logger.LogError(e, "Uploaded package is invalid");
 
                 return IndexingResult.InvalidPackage;
             }
 
-            // The package stream has been stored. Persist the package's metadata to the database.
+            // The package is well-formed. Ensure this is a new package.
+            if (await _packages.ExistsAsync(new PackageIdentity(package.Id, package.Version)))
+            {
+                return IndexingResult.PackageAlreadyExists;
+            }
+
+            // TODO: Add more package validations
             _logger.LogInformation(
-                "Persisting package {Id} {Version} metadata to database...",
+                "Validated package {PackageId} {PackageVersion}, persisting content to storage...",
+                package.Id,
+                package.VersionString);
+
+            try
+            {
+                packageStream.Position = 0;
+
+                await _storage.SavePackageContentAsync(
+                    package,
+                    packageStream,
+                    nuspecStream,
+                    readmeStream,
+                    cancellationToken);
+            }
+            catch (Exception e)
+            {
+                // This may happen due to concurrent pushes.
+                // TODO: Make IPackageStorageService.SavePackageContentAsync return a result enum so this
+                // can be properly handled.
+                _logger.LogError(
+                    e,
+                    "Failed to persist package {PackageId} {PackageVersion} content to storage",
+                    package.Id,
+                    package.VersionString);
+
+                throw;
+            }
+
+            _logger.LogInformation(
+                "Persisted package {Id} {Version} content to storage, saving metadata to database...",
                 package.Id,
                 package.VersionString);
 
             var result = await _packages.AddAsync(package);
-
-            switch (result)
+            if (result == PackageAddResult.PackageAlreadyExists)
             {
-                case PackageAddResult.Success:
-                    _logger.LogInformation(
-                        "Successfully persisted package {Id} {Version} metadata to database. Indexing in search...",
-                        package.Id,
-                        package.VersionString);
+                _logger.LogWarning(
+                    "Package {Id} {Version} metadata already exists in database",
+                    package.Id,
+                    package.VersionString);
 
-                    await _search.IndexAsync(package);
-
-                    _logger.LogInformation(
-                        "Successfully indexed package {Id} {Version} in search",
-                        package.Id,
-                        package.VersionString);
-
-                    return IndexingResult.Success;
-
-                case PackageAddResult.PackageAlreadyExists:
-                    _logger.LogWarning(
-                        "Package {Id} {Version} metadata already exists in database",
-                        package.Id,
-                        package.VersionString);
-
-                    return IndexingResult.PackageAlreadyExists;
-
-                default:
-                    _logger.LogError($"Unknown {nameof(PackageAddResult)} value: {{PackageAddResult}}", result);
-
-                    throw new InvalidOperationException($"Unknown {nameof(PackageAddResult)} value: {result}");
-            }
-        }
-
-        private Package GetPackageMetadata(PackageArchiveReader packageReader)
-        {
-            var nuspec = packageReader.NuspecReader;
-
-            (var repositoryUri, var repositoryType) = GetRepositoryMetadata(nuspec);
-
-            return new Package
-            {
-                Id = nuspec.GetId(),
-                Version = nuspec.GetVersion(),
-                Authors = ParseAuthors(nuspec.GetAuthors()),
-                Description = nuspec.GetDescription(),
-                HasReadme = packageReader.HasReadme(),
-                Language = nuspec.GetLanguage() ?? string.Empty,
-                Listed = true,
-                MinClientVersion = nuspec.GetMinClientVersion()?.ToNormalizedString() ?? string.Empty,
-                Published = DateTime.UtcNow,
-                RequireLicenseAcceptance = nuspec.GetRequireLicenseAcceptance(),
-                Summary = nuspec.GetSummary(),
-                Title = nuspec.GetTitle(),
-                IconUrl = ParseUri(nuspec.GetIconUrl()),
-                LicenseUrl = ParseUri(nuspec.GetLicenseUrl()),
-                ProjectUrl = ParseUri(nuspec.GetProjectUrl()),
-                RepositoryUrl = repositoryUri,
-                RepositoryType = repositoryType,
-                Dependencies = GetDependencies(nuspec),
-                Tags = ParseTags(nuspec.GetTags())
-            };
-        }
-
-        private Uri ParseUri(string uriString)
-        {
-            if (string.IsNullOrEmpty(uriString)) return null;
-
-            return new Uri(uriString);
-        }
-
-        private string[] ParseAuthors(string authors)
-        {
-            if (string.IsNullOrEmpty(authors)) return new string[0];
-
-            return authors.Split(new[] { ',', ';', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
-        }
-
-        private string[] ParseTags(string tags)
-        {
-            if (string.IsNullOrEmpty(tags)) return new string[0];
-
-            return tags.Split(new[] { ',', ';', ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
-        }
-
-        private (Uri repositoryUrl, string repositoryType) GetRepositoryMetadata(NuspecReader nuspec)
-        {
-            var repository = nuspec.GetRepositoryMetadata();
-
-            if (string.IsNullOrEmpty(repository?.Url) ||
-                !Uri.TryCreate(repository.Url, UriKind.Absolute, out var repositoryUri))
-            {
-                return (null, null);
+                return IndexingResult.PackageAlreadyExists;
             }
 
-            if (repositoryUri.Scheme != Uri.UriSchemeHttps)
+            if (result != PackageAddResult.Success)
             {
-                return (null, null);
+                _logger.LogError($"Unknown {nameof(PackageAddResult)} value: {{PackageAddResult}}", result);
+
+                throw new InvalidOperationException($"Unknown {nameof(PackageAddResult)} value: {result}");
             }
 
-            if (repository.Type.Length > 100)
-            {
-                throw new InvalidOperationException("Repository type must be less than or equal 100 characters");
-            }
+            _logger.LogInformation(
+                "Successfully persisted package {Id} {Version} metadata to database. Indexing in search...",
+                package.Id,
+                package.VersionString);
 
-            return (repositoryUri, repository.Type);
-        }
+            await _search.IndexAsync(package);
 
-        private List<BaGetPackageDependency> GetDependencies(NuspecReader nuspec)
-        {
-            var dependencies = new List<BaGetPackageDependency>();
+            _logger.LogInformation(
+                "Successfully indexed package {Id} {Version} in search",
+                package.Id,
+                package.VersionString);
 
-            foreach (var group in nuspec.GetDependencyGroups())
-            {
-                var targetFramework = group.TargetFramework.GetShortFolderName();
-
-                if (!group.Packages.Any())
-                {
-                    dependencies.Add(new BaGetPackageDependency
-                    {
-                        Id = null,
-                        VersionRange = null,
-                        TargetFramework = targetFramework,
-                    });
-                }
-
-                foreach (var dependency in group.Packages)
-                {
-                    dependencies.Add(new BaGetPackageDependency
-                    {
-                        Id = dependency.Id,
-                        VersionRange = dependency.VersionRange?.ToString(),
-                        TargetFramework = targetFramework,
-                    });
-                }
-            }
-
-            return dependencies;
+            return IndexingResult.Success;
         }
     }
 }

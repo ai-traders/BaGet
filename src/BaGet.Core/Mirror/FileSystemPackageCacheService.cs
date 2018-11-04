@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using BaGet.Core.Entities;
 using BaGet.Core.Extensions;
 using BaGet.Core.Services;
 using NuGet.Configuration;
@@ -28,12 +29,35 @@ namespace BaGet.Core.Mirror
             _fsStorageProvider = new FilePackageStorageService(storagePath);
         }
 
-        public async Task AddPackageAsync(Stream stream)
+        public async Task AddPackageAsync(Stream packageStream)
         {
-            using (var archiveReader = new PackageArchiveReader(stream))
+            Package package;
+            Stream nuspecStream;
+            Stream readmeStream;
+
+            using (var packageReader = new PackageArchiveReader(packageStream, leaveStreamOpen: true))
             {
-                await _fsStorageProvider.SavePackageStreamAsync(archiveReader, stream, CancellationToken.None);
+                package = packageReader.GetPackageMetadata();
+                nuspecStream = await packageReader.GetNuspecAsync(CancellationToken.None);
+
+                if (package.HasReadme)
+                {
+                    readmeStream = await packageReader.GetReadmeAsync(CancellationToken.None);
+                }
+                else
+                {
+                    readmeStream = null;
+                }
             }
+
+            packageStream.Position = 0;
+
+            await _fsStorageProvider.SavePackageContentAsync(
+                package,
+                packageStream,
+                nuspecStream,
+                readmeStream,
+                CancellationToken.None);
         }
 
         public Task<bool> ExistsAsync(PackageIdentity package)
