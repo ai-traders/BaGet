@@ -31,7 +31,7 @@ For persistent data, you should mount **volumes**:
  - `/var/baget/cache` contains cached public packages
 
 You should change the default api key (`NUGET-SERVER-API-KEY`) used for pushing packages,
-by setting SHA256 into `ApiKeyHash` environment variable.
+by setting SHA256 into `ApiKeyHash` environment variable. You can generate it with `echo -n 'my-secret' | sha256sum`.
 
 ### Logging to graylog
 
