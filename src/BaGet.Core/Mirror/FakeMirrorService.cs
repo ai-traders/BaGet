@@ -52,8 +52,7 @@ namespace BaGet.Core.Mirror
         }
 
         public Task MirrorAsync(
-            string id,
-            NuGetVersion version,
+            PackageIdentity packageIdentity,
             CancellationToken cancellationToken)
         {
             return Task.CompletedTask;

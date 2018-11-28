@@ -75,7 +75,7 @@ namespace BaGet.Tests
         public async Task DownloadExistingPackage()
         {
             var pkgService = new Mock<IPackageService>(MockBehavior.Strict);
-            pkgService.Setup(p => p.IncrementDownloadCountAsync(It.IsAny<string>(), It.IsAny<NuGetVersion>())).ReturnsAsync(true);
+            pkgService.Setup(p => p.IncrementDownloadCountAsync(It.IsAny<PackageIdentity>())).ReturnsAsync(true);
             var pkgStorageService = new Mock<IPackageStorageService>(MockBehavior.Strict);
             pkgStorageService.Setup(p => p.GetPackageStreamAsync(It.IsAny<PackageIdentity>()))
                 .ReturnsAsync(new MemoryStream(new byte[10]));
@@ -104,7 +104,7 @@ namespace BaGet.Tests
         public async Task DownloadNonExistingPackage()
         {
             var pkgService = new Mock<IPackageService>(MockBehavior.Strict);
-            pkgService.Setup(p => p.IncrementDownloadCountAsync(It.IsAny<string>(), It.IsAny<NuGetVersion>())).ReturnsAsync(false);
+            pkgService.Setup(p => p.IncrementDownloadCountAsync(It.IsAny<PackageIdentity>())).ReturnsAsync(false);
             using (TestServer server = TestServerBuilder.Create()
                 .TraceToTestOutputHelper(Helper,LogLevel.Error)
                 .WithMock(typeof(IPackageService), pkgService)
@@ -119,7 +119,7 @@ namespace BaGet.Tests
         public async Task DownloadExistingPackageManifest()
         {
             var pkgService = new Mock<IPackageService>(MockBehavior.Strict);
-            pkgService.Setup(p => p.ExistsAsync(It.IsAny<string>(), It.IsAny<NuGetVersion>())).ReturnsAsync(true);
+            pkgService.Setup(p => p.ExistsAsync(It.IsAny<PackageIdentity>())).ReturnsAsync(true);
             var pkgStorageService = new Mock<IPackageStorageService>(MockBehavior.Strict);
             pkgStorageService.Setup(p => p.GetNuspecStreamAsync(It.IsAny<PackageIdentity>()))
                 .ReturnsAsync(new MemoryStream(Encoding.UTF8.GetBytes(exampleNuSpec)));
@@ -148,7 +148,7 @@ namespace BaGet.Tests
         public async Task DownloadExistingPackageReadme()
         {
             var pkgService = new Mock<IPackageService>(MockBehavior.Strict);
-            pkgService.Setup(p => p.ExistsAsync(It.IsAny<string>(), It.IsAny<NuGetVersion>())).ReturnsAsync(true);
+            pkgService.Setup(p => p.ExistsAsync(It.IsAny<PackageIdentity>())).ReturnsAsync(true);
             var pkgStorageService = new Mock<IPackageStorageService>(MockBehavior.Strict);
             pkgStorageService.Setup(p => p.GetReadmeStreamAsync(It.IsAny<PackageIdentity>()))
                 .ReturnsAsync(new MemoryStream(Encoding.UTF8.GetBytes("readme content")));

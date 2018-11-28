@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 using BaGet.Core.Extensions;
 using BaGet.Core.Services;
@@ -7,6 +8,7 @@ using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using NuGet.Packaging;
 using NuGet.Packaging.Core;
+using NuGet.Versioning;
 
 namespace BaGet.Azure.Configuration
 {
@@ -23,79 +25,79 @@ namespace BaGet.Azure.Configuration
             _container = container ?? throw new ArgumentNullException(nameof(container));
         }
 
-        public async Task DeleteAsync(PackageIdentity package)
+        public async Task SavePackageStreamAsync(
+            PackageArchiveReader package,
+            Stream packageStream,
+            CancellationToken cancellationToken)
         {
-            await GetPackageBlob(package).DeleteIfExistsAsync();
-            await GetNuspecBlob(package).DeleteIfExistsAsync();
-            await GetReadmeBlob(package).DeleteIfExistsAsync();
-        }
+            var identity = await package.GetIdentityAsync(cancellationToken);
+            var lowercasedId = identity.Id.ToLowerInvariant();
+            var lowercasedNormalizedVersion = identity.Version.ToNormalizedString().ToLowerInvariant();
 
-        public Task<Stream> GetPackageStreamAsync(PackageIdentity package)
-        {
-            var blob = GetPackageBlob(package);
+            var packageBlob = GetPackageBlob(lowercasedId, lowercasedNormalizedVersion);
+            var nuspecBlob = GetNuspecBlob(lowercasedId, lowercasedNormalizedVersion);
+            var readmeBlob = GetReadmeBlob(lowercasedId, lowercasedNormalizedVersion);
 
-            return DownloadBlobAsync(blob);
-        }
-        public Task<Stream> GetNuspecStreamAsync(PackageIdentity package)
-        {
-            var blob = GetNuspecBlob(package);
+            // Save the package's nupkg
+            packageStream.Seek(0, SeekOrigin.Begin);
+            await UploadBlobAsync(packageBlob, packageStream, PackageContentType);
 
-            return DownloadBlobAsync(blob);
-        }
-
-        public async Task<Stream> GetReadmeStreamAsync(PackageIdentity package)
-        {
-            var blob = GetReadmeBlob(package);
-
-            if (!await blob.ExistsAsync())
+            // Save the package's nuspec
+            using (var nuspecStream = await package.GetNuspecAsync(cancellationToken))
             {
-                return Stream.Null;
+                await UploadBlobAsync(nuspecBlob, nuspecStream, TextContentType);
             }
+
+            // Save the package's reamde
+            using (var readmeStream = package.GetReadme())
+            {
+                await UploadBlobAsync(readmeBlob, readmeStream, TextContentType);
+            }
+        }
+
+        public async Task DeleteAsync(PackageIdentity id)
+        {
+            var lowercasedId = id.Id.ToLowerInvariant();
+            var lowercasedNormalizedVersion = id.Version.ToNormalizedString().ToLowerInvariant();
+
+            await GetPackageBlob(lowercasedId, lowercasedNormalizedVersion).DeleteIfExistsAsync();
+            await GetNuspecBlob(lowercasedId, lowercasedNormalizedVersion).DeleteIfExistsAsync();
+            await GetReadmeBlob(lowercasedId, lowercasedNormalizedVersion).DeleteIfExistsAsync();
+        }
+
+        public Task<Stream> GetPackageStreamAsync(PackageIdentity id)
+        {
+            return GetBlobStreamAsync(id, GetPackageBlob);
+        }
+
+        public Task<Stream> GetNuspecStreamAsync(PackageIdentity id)
+        {
+            return GetBlobStreamAsync(id, GetNuspecBlob);
+        }
+
+        public Task<Stream> GetReadmeStreamAsync(PackageIdentity id)
+        {
+            return GetBlobStreamAsync(id, GetReadmeBlob);
+        }
+
+        private async Task<Stream> GetBlobStreamAsync(
+            PackageIdentity id,
+            Func<string, string, CloudBlockBlob> blobFunc)
+        {
+            var lowercasedId = id.Id.ToLowerInvariant();
+            var lowercasedNormalizedVersion = id.Version.ToNormalizedString().ToLowerInvariant();
+            var blob = blobFunc(lowercasedId, lowercasedNormalizedVersion);
 
             return await DownloadBlobAsync(blob);
         }
 
-        public async Task SavePackageStreamAsync(PackageArchiveReader package, Stream packageStream)
-        {
-            var identity = package.GetIdentity();
-
-            using (var nuspecStream = package.GetNuspec())
-            {
-                packageStream.Seek(0, SeekOrigin.Begin);
-
-                await UploadBlobAsync(GetPackageBlob(identity), packageStream, PackageContentType);
-                await UploadBlobAsync(GetNuspecBlob(identity), nuspecStream, TextContentType);
-
-                // TODO: Figure out why this doesn't work.
-                // It seems like a container reference can't be used concurrently...
-                //return Task.WhenAll(
-                //    UploadBlobAsync(GetPackageBlob(identity), packageStream, PackageContentType),
-                //    UploadBlobAsync(GetNuspecBlob(identity), nuspecStream, TextContentType));
-            }
-
-            using (var readmeStream = package.GetReadme())
-            {
-                if (readmeStream != Stream.Null)
-                {
-                    await UploadBlobAsync(GetReadmeBlob(identity), readmeStream, TextContentType);
-                }
-            }
-        }
-
-        private CloudBlockBlob GetPackageBlob(PackageIdentity package)
-            => _container.GetBlockBlobReference(package.PackagePath());
-
-        private CloudBlockBlob GetNuspecBlob(PackageIdentity package)
-            => _container.GetBlockBlobReference(package.NuspecPath());
-
-        private CloudBlockBlob GetReadmeBlob(PackageIdentity package)
-            => _container.GetBlockBlobReference(package.ReadmePath());
-
-
+        // TODO: This should accept a cancellation token.
         private async Task UploadBlobAsync(CloudBlockBlob blob, Stream content, string contentType)
         {
             blob.Properties.ContentType = contentType;
 
+            // TODO: Uploads should be idempotent. This should fail if and only if the blob
+            // already exists but has different content.
             await blob.UploadFromStreamAsync(content);
         }
 
@@ -118,6 +120,39 @@ namespace BaGet.Azure.Configuration
             stream.Position = 0;
 
             return stream;
+        }
+
+        private CloudBlockBlob GetPackageBlob(string lowercasedId, string lowercasedNormalizedVersion)
+            => _container.GetBlockBlobReference(PackagePath(lowercasedId, lowercasedNormalizedVersion));
+
+        private CloudBlockBlob GetNuspecBlob(string lowercasedId, string lowercasedNormalizedVersion)
+            => _container.GetBlockBlobReference(NuspecPath(lowercasedId, lowercasedNormalizedVersion));
+
+        private CloudBlockBlob GetReadmeBlob(string lowercasedId, string lowercasedNormalizedVersion)
+            => _container.GetBlockBlobReference(ReadmePath(lowercasedId, lowercasedNormalizedVersion));
+
+        private string PackagePath(string lowercasedId, string lowercasedNormalizedVersion)
+        {
+            return Path.Combine(
+                lowercasedId,
+                lowercasedNormalizedVersion,
+                $"{lowercasedId}.{lowercasedNormalizedVersion}.nupkg");
+        }
+
+        private string NuspecPath(string lowercasedId, string lowercasedNormalizedVersion)
+        {
+            return Path.Combine(
+                lowercasedId,
+                lowercasedNormalizedVersion,
+                $"{lowercasedId}.nuspec");
+        }
+
+        private string ReadmePath(string lowercasedId, string lowercasedNormalizedVersion)
+        {
+            return Path.Combine(
+                lowercasedId,
+                lowercasedNormalizedVersion,
+                "readme");
         }
     }
 }

@@ -20,7 +20,7 @@ namespace BaGet.Core.Mirror
         /// <param name="version">The package's version</param>
         /// <param name="cancellationToken">The token to cancel the mirroring</param>
         /// <returns>A task that completes when the package has been mirrored.</returns>
-        Task MirrorAsync(string id, NuGetVersion version, CancellationToken cancellationToken);
+        Task MirrorAsync(PackageIdentity pid, CancellationToken cancellationToken);
 
         Task<IReadOnlyList<string>> FindUpstreamAsync(string id, CancellationToken ct);
 

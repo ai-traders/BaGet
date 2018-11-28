@@ -44,7 +44,7 @@ namespace BaGet.Tests.Services
             });
             Assert.Equal(PackageAddResult.Success, result);
 
-            var found = await packageService.FindAsync("dummy", NuGetVersion.Parse("1.0.0"), false, true);
+            var found = await packageService.FindOrNullAsync(new NuGet.Packaging.Core.PackageIdentity("dummy", NuGetVersion.Parse("1.0.0")), false, true);
             Assert.NotNull(found.Dependencies);
             Assert.NotEmpty(found.Dependencies);
             var one = found.Dependencies.Single();

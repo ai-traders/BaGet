@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using BaGet.Core.Configuration;
 using BaGet.Core.Legacy.OData;
@@ -50,13 +51,13 @@ namespace BaGet.Web.Controllers
                     return;
                 }
 
-                if (!await packageService.IncrementDownloadCountAsync(id, nugetVersion))
+                var identity = new PackageIdentity(id, nugetVersion);
+
+                if (!await packageService.IncrementDownloadCountAsync(identity))
                 {
                      res.StatusCode = 404;
                      return;
                 }
-
-                var identity = new PackageIdentity(id, nugetVersion);
                 var packageStream = await _storage.GetPackageStreamAsync(identity);
 
                 await res.FromStream(packageStream, "application/zip");
@@ -75,6 +76,7 @@ namespace BaGet.Web.Controllers
             this.GetCompat("/v2/", indexHandler);
 
             this.GetCompat(@"/v2/FindPackagesById{query}", async (req, res, routeData) => {
+                CancellationToken ct = CancellationToken.None;
                 try {
                     var serviceUrl = GetServiceUrl(req);
                     var uriParser = new ODataUriParser(odataModel,new Uri(serviceUrl), req.GetUri());
@@ -111,7 +113,8 @@ namespace BaGet.Web.Controllers
                             string id = queryParams.Keys.First(k => k.Key == "Id").Value as string;
                             string version = queryParams.Keys.First(k => k.Key == "Version").Value as string;
                             _log.LogDebug("Request to find package by id={0} and version={1}", id, version);
-                            var found = await _packageService.FindAsync(id, NuGetVersion.Parse(version), false, true);
+                            var identity = new PackageIdentity(id, NuGetVersion.Parse(version));
+                            var found = await _packageService.FindOrNullAsync(identity, false, true);
                             if(found == null) {
                                 res.StatusCode = 404;
                                 return;

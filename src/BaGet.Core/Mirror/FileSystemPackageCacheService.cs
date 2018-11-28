@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 using BaGet.Core.Extensions;
 using BaGet.Core.Services;
@@ -31,7 +32,7 @@ namespace BaGet.Core.Mirror
         {
             using (var archiveReader = new PackageArchiveReader(stream))
             {
-                await _fsStorageProvider.SavePackageStreamAsync(archiveReader, stream);
+                await _fsStorageProvider.SavePackageStreamAsync(archiveReader, stream, CancellationToken.None);
             }
         }
 

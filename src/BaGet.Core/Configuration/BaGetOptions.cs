@@ -8,6 +8,11 @@
         /// </summary>
         public string ApiKeyHash { get; set; }
 
+        /// <summary>
+        /// How BaGet should interpret package deletion requests.
+        /// </summary>
+        public PackageDeletionBehavior PackageDeletionBehavior { get; set; } = PackageDeletionBehavior.Unlist;
+
         public DatabaseOptions Database { get; set; }
         public StorageOptions Storage { get; set; }
         public SearchOptions Search { get; set; }

@@ -14,6 +14,7 @@ using Carter.Request;
 using Carter.Response;
 using Microsoft.AspNetCore.Http;
 using Newtonsoft.Json;
+using NuGet.Packaging.Core;
 using NuGet.Versioning;
 
 namespace BaGet.Controllers.Web.Registration
@@ -70,8 +71,8 @@ namespace BaGet.Controllers.Web.Registration
                     res.StatusCode = 400;
                     return;
                 }
-
-                var package = await _packages.FindAsync(id, nugetVersion, false, includeDependencies: false);
+                var pid = new PackageIdentity(id, nugetVersion);
+                var package = await _packages.FindOrNullAsync(pid, false, includeDependencies: false);
 
                 if (package == null)
                 {
@@ -81,10 +82,10 @@ namespace BaGet.Controllers.Web.Registration
 
                 // Documentation: https://docs.microsoft.com/en-us/nuget/api/registration-base-url-resource
                 var result = new RegistrationLeaf(
-                    registrationUri: req.PackageRegistration(id, nugetVersion, ""),
+                    registrationUri: req.PackageRegistration(pid, ""),
                     listed: package.Listed,
                     downloads: package.Downloads,
-                    packageContentUri: req.PackageDownload(id, nugetVersion, ""),
+                    packageContentUri: req.PackageDownload(pid, ""),
                     published: package.Published,
                     registrationIndexUri: req.PackageRegistration(id, ""));
 
@@ -98,8 +99,8 @@ namespace BaGet.Controllers.Web.Registration
                 catalogEntry: new CatalogEntry(
                     package: package,
                     catalogUri: $"https://api.nuget.org/v3/catalog0/data/2015.02.01.06.24.15/{package.Id}.{package.Version}.json",
-                    packageContent: request.PackageDownload(package.Id, package.Version, ""),
+                    packageContent: request.PackageDownload(new PackageIdentity(package.Id, package.Version), ""),
                     getRegistrationUrl: id => new System.Uri(request.PackageRegistration(id, ""))),
-                packageContent: request.PackageDownload(package.Id, package.Version, ""));
+                packageContent: request.PackageDownload(new PackageIdentity(package.Id, package.Version), ""));
     }
 }

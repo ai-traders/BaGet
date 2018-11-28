@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using BaGet.Core.Entities;
 using Microsoft.EntityFrameworkCore;
+using NuGet.Packaging.Core;
 using NuGet.Versioning;
 
 namespace BaGet.Core.Services
@@ -34,11 +35,14 @@ namespace BaGet.Core.Services
             }
         }
 
-        public Task<bool> ExistsAsync(string id, NuGetVersion version)
-            => _context.Packages
+        public Task<bool> ExistsAsync(PackageIdentity pid) {
+            string id = pid.Id;
+            NuGetVersion version = pid.Version;
+            return _context.Packages
                 .Where(p => p.Id == id)
                 .Where(p => p.VersionString == version.ToNormalizedString())
                 .AnyAsync();
+        }
 
         public async Task<IReadOnlyList<Package>> FindAsync(string id, bool includeUnlisted = false, bool includeDeps = false)
         {
@@ -57,8 +61,10 @@ namespace BaGet.Core.Services
             return (await query.ToListAsync()).AsReadOnly();
         }
 
-        public Task<Package> FindAsync(string id, NuGetVersion version, bool includeUnlisted = false, bool includeDeps = false)
+        public Task<Package> FindOrNullAsync(PackageIdentity pid, bool includeUnlisted = false, bool includeDeps = false)
         {
+            string id = pid.Id;
+            NuGetVersion version = pid.Version;
             var query = _context.Packages
                 .Where(p => p.Id == id)
                 .Where(p => p.VersionString == version.ToNormalizedString());
@@ -76,24 +82,50 @@ namespace BaGet.Core.Services
             return query.FirstOrDefaultAsync();
         }
 
-        public Task<bool> UnlistPackageAsync(string id, NuGetVersion version)
+        public Task<bool> UnlistPackageAsync(PackageIdentity pid)
         {
-            return TryUpdatePackageAsync(id, version, p => p.Listed = false);
+            return TryUpdatePackageAsync(pid, p => p.Listed = false);
         }
 
-        public Task<bool> RelistPackageAsync(string id, NuGetVersion version)
+        public Task<bool> RelistPackageAsync(PackageIdentity pid)
         {
-            return TryUpdatePackageAsync(id, version, p => p.Listed = true);
+            return TryUpdatePackageAsync(pid, p => p.Listed = true);
         }
 
-        public Task<bool> IncrementDownloadCountAsync(string id, NuGetVersion version)
+        public Task<bool> IncrementDownloadCountAsync(PackageIdentity pid)
         {
-            return TryUpdatePackageAsync(id, version, p => p.Downloads += 1);
+            return TryUpdatePackageAsync(pid, p => p.Downloads += 1);
         }
 
-        private async Task<bool> TryUpdatePackageAsync(string id, NuGetVersion version, Action<Package> action)
+        public async Task<bool> HardDeletePackageAsync(PackageIdentity pid)
         {
-            var package = await FindAsync(id, version, includeUnlisted: true);
+            string id = pid.Id;
+            NuGetVersion version = pid.Version;
+            var package = await _context.Packages
+                .Where(p => p.Id == id)
+                .Where(p => p.VersionString == version.ToNormalizedString())
+                .Include(p => p.Dependencies)
+                .FirstOrDefaultAsync();
+
+            if (package == null)
+            {
+                return false;
+            }
+
+            _context.Packages.Remove(package);
+            await _context.SaveChangesAsync();
+
+            return true;
+        }
+
+        private async Task<bool> TryUpdatePackageAsync(PackageIdentity pid, Action<Package> action)
+        {
+            string id = pid.Id;
+            NuGetVersion version = pid.Version;
+            var package = await _context.Packages
+                .Where(p => p.Id == id)
+                .Where(p => p.VersionString == version.ToNormalizedString())
+                .FirstOrDefaultAsync();
 
             if (package != null)
             {

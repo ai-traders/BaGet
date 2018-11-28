@@ -50,13 +50,14 @@ namespace BaGet.Controllers
                     return;
                 }
 
-                if (!await _packages.IncrementDownloadCountAsync(id, nugetVersion))
+                var identity = new PackageIdentity(id, nugetVersion);
+                if (!await _packages.IncrementDownloadCountAsync(identity))
                 {
                      res.StatusCode = 404;
                      return;
                 }
 
-                var identity = new PackageIdentity(id, nugetVersion);
+                
                 var packageStream = await _storage.GetPackageStreamAsync(identity);
 
                 await res.FromStream(packageStream, "application/octet-stream");
@@ -72,13 +73,13 @@ namespace BaGet.Controllers
                     return;
                 }
 
-                if (!await _packages.ExistsAsync(id, nugetVersion))
+                var identity = new PackageIdentity(id, nugetVersion);
+
+                if (!await _packages.ExistsAsync(identity))
                 {
                     res.StatusCode = 404;
                     return;
                 }
-
-                var identity = new PackageIdentity(id, nugetVersion);
 
                 await res.FromStream(await _storage.GetNuspecStreamAsync(identity), "text/xml");
             });
@@ -93,13 +94,13 @@ namespace BaGet.Controllers
                     return;
                 }
 
-                if (!await _packages.ExistsAsync(id, nugetVersion))
+                var identity = new PackageIdentity(id, nugetVersion);
+
+                if (!await _packages.ExistsAsync(identity))
                 {
                     res.StatusCode = 404;
                     return;
-                }
-
-                var identity = new PackageIdentity(id, nugetVersion);
+                }                
 
                 await res.FromStream(await _storage.GetReadmeStreamAsync(identity), "text/markdown");
             });

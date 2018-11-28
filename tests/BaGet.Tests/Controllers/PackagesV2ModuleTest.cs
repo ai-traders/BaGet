@@ -118,21 +118,21 @@ namespace BaGet.Tests
         [Theory]
         [MemberData(nameof(V2Cases))]
         public async Task GetPackagesSpecifiedIdAndVersionEmptyRepository(string index) {
-            packageRepo.Setup(r => r.FindAsync(It.IsAny<string>(), It.IsAny<NuGetVersion>(), It.IsAny<bool>(), It.IsAny<bool>()))
+            packageRepo.Setup(r => r.FindOrNullAsync(It.IsAny<PackageIdentity>(), It.IsAny<bool>(), It.IsAny<bool>()))
                 .ReturnsAsync(null as Package).Verifiable();
             using (TestServer server = serverBuilder.Build())
             {
                 var httpClient = server.CreateClient();                
                 var result = await httpClient.GetAsync(index + "/Packages(Id='dummy',Version='1.0.0')");
                 Assert.Equal(HttpStatusCode.NotFound, result.StatusCode);
-                packageRepo.Verify(r => r.FindAsync("dummy",NuGetVersion.Parse("1.0.0"), false, true), Times.Exactly(1));
+                packageRepo.Verify(r => r.FindOrNullAsync(new PackageIdentity("dummy",NuGetVersion.Parse("1.0.0")), false, true), Times.Exactly(1));
             }
         }
 
         [Theory]
         [MemberData(nameof(V2Cases))]
         public async Task GetPackagesSpecifiedIdAndVersionWhenExists(string index) {
-            packageRepo.Setup(r => r.FindAsync(It.IsAny<string>(),It.IsAny<NuGetVersion>(), It.IsAny<bool>(), It.IsAny<bool>()))
+            packageRepo.Setup(r => r.FindOrNullAsync(It.IsAny<PackageIdentity>(), It.IsAny<bool>(), It.IsAny<bool>()))
                 .ReturnsAsync(dummy1_0_0).Verifiable();
             using (TestServer server = serverBuilder.Build())
             {
@@ -140,7 +140,7 @@ namespace BaGet.Tests
                 var result = await httpClient.GetAsync(index + "/Packages(Id='dummy',Version='1.0.0')");
                 Assert.Equal(HttpStatusCode.OK, result.StatusCode);
                 Assert.Equal("application/atom+xml", result.Content.Headers.ContentType.MediaType);
-                packageRepo.Verify(r => r.FindAsync("dummy",NuGetVersion.Parse("1.0.0"), false, true), Times.Exactly(1));
+                packageRepo.Verify(r => r.FindOrNullAsync(new PackageIdentity("dummy",NuGetVersion.Parse("1.0.0")), false, true), Times.Exactly(1));
                 var responseText = await result.Content.ReadAsStringAsync();               
                 var entries = XmlFeedHelper.ParsePage(XDocument.Parse(responseText));
                 var dummyEntry = Assert.Single(entries);
@@ -151,9 +151,9 @@ namespace BaGet.Tests
         [Theory]
         [MemberData(nameof(V2Cases))]
         public async Task GetPackageContentWhenExists(string index) {
-            packageRepo.Setup(r => r.FindAsync(It.IsAny<string>(),It.IsAny<NuGetVersion>(), It.IsAny<bool>(), It.IsAny<bool>()))
+            packageRepo.Setup(r => r.FindOrNullAsync(It.IsAny<PackageIdentity>(), It.IsAny<bool>(), It.IsAny<bool>()))
                 .ReturnsAsync(dummy1_0_0).Verifiable();
-            packageRepo.Setup(r => r.IncrementDownloadCountAsync(It.IsAny<string>(),It.IsAny<NuGetVersion>()))
+            packageRepo.Setup(r => r.IncrementDownloadCountAsync(It.IsAny<PackageIdentity>()))
                 .ReturnsAsync(true);
             storageRepo.Setup(r => r.GetPackageStreamAsync(It.IsAny<PackageIdentity>()))
                 .ReturnsAsync(new MemoryStream(new byte[3] { 1, 2, 3}));

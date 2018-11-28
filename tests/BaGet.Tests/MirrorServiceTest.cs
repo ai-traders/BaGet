@@ -23,6 +23,8 @@ namespace BaGet.Tests
         private Mock<IPackageCacheService> localPackages;
         private Mock<IPackageDownloader> downloader;
 
+        private PackageIdentity log4net = new PackageIdentity("log4net", NuGetVersion.Parse("2.0.8"));
+
         public MirrorServiceTest(ITestOutputHelper helper) {
             var logger = new XunitLoggerProvider(helper);
             localPackages = new Mock<IPackageCacheService>(MockBehavior.Strict);
@@ -45,7 +47,7 @@ namespace BaGet.Tests
         [Fact]
         public async Task MirrorAsyncShouldDownloadAndAddPackageWhenDoesNotExist() {
             localPackages.Setup(p => p.ExistsAsync(It.IsAny<PackageIdentity>())).ReturnsAsync(false);
-            await mirrorService.MirrorAsync("log4net", NuGetVersion.Parse("2.0.8"), CancellationToken.None);
+            await mirrorService.MirrorAsync(log4net, CancellationToken.None);
             downloader.Verify(d => d.DownloadOrNullAsync(It.IsAny<Uri>(), It.IsAny<CancellationToken>()), Times.Once());
             localPackages.Verify(p => p.AddPackageAsync(It.IsAny<Stream>()), Times.Once());
         }
@@ -53,7 +55,7 @@ namespace BaGet.Tests
         [Fact]
         public async Task MirrorAsyncShouldNotDownloadAndAddPackageWhenExists() {
             localPackages.Setup(p => p.ExistsAsync(It.IsAny<PackageIdentity>())).ReturnsAsync(true);
-            await mirrorService.MirrorAsync("log4net", NuGetVersion.Parse("2.0.8"), CancellationToken.None);
+            await mirrorService.MirrorAsync(log4net, CancellationToken.None);
             downloader.Verify(d => d.DownloadOrNullAsync(It.IsAny<Uri>(), It.IsAny<CancellationToken>()), Times.Never());
             localPackages.Verify(p => p.AddPackageAsync(It.IsAny<Stream>()), Times.Never());
         }
@@ -70,7 +72,7 @@ namespace BaGet.Tests
             localPackages.Setup(p => p.ExistsAsync(It.IsAny<PackageIdentity>())).ReturnsAsync(false);
             List<Task> tasks = new List<Task>();
             for(int i = 0; i< 10; i++) {
-                tasks.Add(mirrorService.MirrorAsync("log4net", NuGetVersion.Parse("2.0.8"), CancellationToken.None));
+                tasks.Add(mirrorService.MirrorAsync(log4net, CancellationToken.None));
             }            
             await Task.WhenAll(tasks.ToArray());
             downloader.Verify(d => d.DownloadOrNullAsync(It.IsAny<Uri>(), It.IsAny<CancellationToken>()), Times.Once());

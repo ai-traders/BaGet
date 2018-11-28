@@ -11,6 +11,8 @@ using NuGet.Versioning;
 using Carter.ModelBinding;
 using Carter.Request;
 using Carter.Response;
+using System.Threading;
+using NuGet.Packaging.Core;
 
 namespace BaGet.Controllers
 {
@@ -36,6 +38,7 @@ namespace BaGet.Controllers
 
             this.Put("/v2/package", async (req, res, routeData) =>
             {
+                CancellationToken ct = CancellationToken.None;
                 Stream uploadStream;
                 if (req.Form.Files.Count > 0)
                 {
@@ -65,7 +68,7 @@ namespace BaGet.Controllers
                         return;
                     }
                 
-                    var result = await _indexer.IndexAsync(uploadStream);
+                    var result = await _indexer.IndexAsync(uploadStream, ct);
 
                     switch (result)
                     {
@@ -102,13 +105,15 @@ namespace BaGet.Controllers
                     res.StatusCode = 400;
                 }
 
+                var identity = new PackageIdentity(id, nugetVersion);
+
                 string apiKey = req.Headers[ApiKeyHeader];
                 if (!await _authentication.AuthenticateAsync(apiKey))
                 {
                     res.StatusCode = 403;
                 }
 
-                if (await _packages.UnlistPackageAsync(id, nugetVersion))
+                if (await _packages.UnlistPackageAsync(identity))
                 {
                     res.StatusCode = 204;
                 }
@@ -131,8 +136,9 @@ namespace BaGet.Controllers
                 {
                     res.StatusCode = 403;
                 }
+                var identity = new PackageIdentity(id, nugetVersion);
 
-                if (await _packages.RelistPackageAsync(id, nugetVersion))
+                if (await _packages.RelistPackageAsync(identity))
                 {
                     res.StatusCode = 200;
                 }

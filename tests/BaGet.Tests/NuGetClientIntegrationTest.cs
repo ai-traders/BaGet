@@ -220,8 +220,8 @@ namespace BaGet.Tests
                 null, 5, false, GetApiKey, GetApiKey, false, logger);
 
             var packageService = server.Host.Services.GetRequiredService<IPackageService>();
-            Assert.True(await packageService.ExistsAsync("baget-test1", NuGetVersion.Parse("1.0.0")));
-            var found = await packageService.FindAsync("baget-test1", NuGetVersion.Parse("1.0.0"), false, true);
+            Assert.True(await packageService.ExistsAsync(new PackageIdentity("baget-test1", NuGetVersion.Parse("1.0.0"))));
+            var found = await packageService.FindOrNullAsync(new PackageIdentity("baget-test1", NuGetVersion.Parse("1.0.0")), false, true);
             Assert.NotNull(found.Dependencies);
             Assert.NotEmpty(found.Dependencies);
             var one = found.Dependencies.Single();

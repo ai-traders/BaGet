@@ -1,5 +1,6 @@
 ﻿using System;
 using Microsoft.AspNetCore.Http;
+using NuGet.Packaging.Core;
 using NuGet.Versioning;
 
 namespace BaGet.Web.Extensions
@@ -22,10 +23,10 @@ namespace BaGet.Web.Extensions
         public static string PackageSearch(this HttpRequest request, string prefix) => request.AbsoluteUrl(prefix.UriCombine("v3/search"));
         public static string PackageAutocomplete(this HttpRequest request, string prefix) => request.AbsoluteUrl(prefix.UriCombine("v3/autocomplete"));
 
-        public static string PackageDownload(this HttpRequest request, string id, NuGetVersion version, string prefix)
+        public static string PackageDownload(this HttpRequest request, PackageIdentity pid, string prefix)
         {
-            id = id.ToLowerInvariant();
-            var versionString = version.ToNormalizedString().ToLowerInvariant();
+            var id = pid.Id.ToLowerInvariant();
+            var versionString = pid.Version.ToNormalizedString().ToLowerInvariant();
             var relativePath = string.Format("v3/package/{0}/{1}/{0}.{1}.nupkg", id, versionString);
             relativePath = prefix.UriCombine(relativePath);
             return request.AbsoluteUrl(relativePath);
@@ -38,9 +39,9 @@ namespace BaGet.Web.Extensions
             return request.AbsoluteUrl(relativePath);
         }
 
-        public static string PackageRegistration(this HttpRequest request, string id, NuGetVersion version, string prefix) {
-            id = id.ToLowerInvariant();
-            var versionString = version.ToNormalizedString().ToLowerInvariant();
+        public static string PackageRegistration(this HttpRequest request, PackageIdentity pid, string prefix) {
+            var id = pid.Id.ToLowerInvariant();
+            var versionString = pid.Version.ToNormalizedString().ToLowerInvariant();
             var relativePath = string.Format("v3/registration/{0}/{1}.json", id, versionString);
             relativePath = prefix.UriCombine(relativePath);
             return request.AbsoluteUrl(relativePath);

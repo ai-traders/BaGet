@@ -39,7 +39,7 @@ namespace BaGet.Core.Mirror
             _localPackages = localPackages ?? throw new ArgumentNullException(nameof(localPackages));
             _downloader = downloader ?? throw new ArgumentNullException(nameof(downloader));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            this._loggerAdapter = new NuGetLoggerAdapter<MirrorService>(_logger);            
+            this._loggerAdapter = new NuGetLoggerAdapter<MirrorService>(_logger);
             _sourceRepository = client.GetRepository(options.UpstreamIndex);
         }
 
@@ -49,25 +49,24 @@ namespace BaGet.Core.Mirror
         }
 
         public async Task<IReadOnlyList<string>> FindUpstreamAsync(string id, CancellationToken ct)
-        {           
+        {
             var versions = await _sourceRepository.GetAllVersionsAsync(id, ct);
             //TODO: possibly cache response
             return versions.Select(v => v.ToNormalizedString()).ToList();
         }
 
-        public Task MirrorAsync(string id, NuGetVersion version, CancellationToken cancellationToken)
+        public Task MirrorAsync(PackageIdentity pid, CancellationToken cancellationToken)
         {
-            var pid = new PackageIdentity(id, version);
             if (_localPackages.ExistsAsync(pid).Result)
             {
                 return Task.CompletedTask;
             }
 
-            lock(_startLock) {                
+            lock(_startLock) {
                 if(!_downloads.TryGetValue(pid, out var task)) {
                     task = IndexFromSourceAsync(pid, cancellationToken);
                     _downloads.Add(pid, task);
-                }                
+                }
                 int count = _downloads.Count;
                 _logger.LogDebug("Total count of downloads in progress {Count}", count);
                 return task;
@@ -85,7 +84,7 @@ namespace BaGet.Core.Mirror
 
             try
             {
-                Uri packageUri = await _sourceRepository.GetPackageUriAsync(id, version, cancellationToken);                
+                Uri packageUri = await _sourceRepository.GetPackageUriAsync(id, version, cancellationToken);
 
                 using (var stream = await _downloader.DownloadOrNullAsync(packageUri, cancellationToken))
                 {
@@ -115,7 +114,7 @@ namespace BaGet.Core.Mirror
                 _logger.LogError(e, "Failed to mirror package {Id} {Version}", id, version);
             }
             finally {
-                lock(_startLock) {             
+                lock(_startLock) {
                     _downloads.Remove(pid);
                 }
             }
@@ -147,7 +146,7 @@ namespace BaGet.Core.Mirror
         public Task<IPackageSearchMetadata> FindAsync(PackageIdentity identity)
         {
             //TODO: possibly cache and stream from in-memory cache
-            return _sourceRepository.GetMetadataAsync(identity, CancellationToken.None);             
+            return _sourceRepository.GetMetadataAsync(identity, CancellationToken.None);
         }
     }
 }

@@ -46,10 +46,9 @@ namespace BaGet.Controllers
                     return;
                 }
 
-                // Allow read-through caching if it is configured.
-                await _mirror.MirrorAsync(id, nugetVersion, CancellationToken.None);
-
                 var identity = new PackageIdentity(id, nugetVersion);
+                await _mirror.MirrorAsync(identity, CancellationToken.None);
+                
                 var packageStream = await _mirror.GetPackageStreamAsync(identity);
 
                 await res.FromStream(packageStream, "application/octet-stream");
@@ -65,17 +64,14 @@ namespace BaGet.Controllers
                     return;
                 }
 
-                // Allow read-through caching if it is configured.
-                await _mirror.MirrorAsync(id, nugetVersion, CancellationToken.None);
+                var identity = new PackageIdentity(id, nugetVersion);
+                await _mirror.MirrorAsync(identity, CancellationToken.None);
 
                 if (!await _mirror.ExistsAsync(new PackageIdentity(id, nugetVersion)))
                 {
                     res.StatusCode = 404;
                     return;
                 }
-
-                var identity = new PackageIdentity(id, nugetVersion);
-
                 await res.FromStream(await _mirror.GetNuspecStreamAsync(identity), "text/xml");
             });
 
@@ -89,8 +85,8 @@ namespace BaGet.Controllers
                     return;
                 }
 
-                // Allow read-through caching if it is configured.
-                await _mirror.MirrorAsync(id, nugetVersion, CancellationToken.None);
+                var identity = new PackageIdentity(id, nugetVersion);
+                await _mirror.MirrorAsync(identity, CancellationToken.None);
 
                 if (!await _mirror.ExistsAsync(new PackageIdentity(id, nugetVersion)))
                 {
@@ -98,7 +94,7 @@ namespace BaGet.Controllers
                     return;
                 }
 
-                var identity = new PackageIdentity(id, nugetVersion);
+                
 
                 await res.FromStream(await _mirror.GetReadmeStreamAsync(identity), "text/markdown");
             });

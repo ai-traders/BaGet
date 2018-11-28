@@ -40,13 +40,13 @@ namespace BaGet.Tests
 
         [Fact]
         public async Task MirrorAsync() {
-            await mirrorService.MirrorAsync("log4net", NuGetVersion.Parse("2.0.8"), CancellationToken.None);
+            await mirrorService.MirrorAsync(new PackageIdentity("log4net", NuGetVersion.Parse("2.0.8")), CancellationToken.None);
             Assert.True(await mirrorService.ExistsAsync(log4netId));
         }
 
         [Fact]
         public async Task MirrorAsyncThenStream() {
-            await mirrorService.MirrorAsync("log4net", NuGetVersion.Parse("2.0.8"), CancellationToken.None);
+            await mirrorService.MirrorAsync(new PackageIdentity("log4net", NuGetVersion.Parse("2.0.8")), CancellationToken.None);
             using(var stream = await mirrorService.GetPackageStreamAsync(log4netId)) {
                 
             }            

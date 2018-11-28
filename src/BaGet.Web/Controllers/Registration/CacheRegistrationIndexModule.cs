@@ -73,8 +73,10 @@ namespace BaGet.Controllers.Web.Registration
                     return;
                 }
 
+                var pid = new PackageIdentity(id, nugetVersion);
+
                 // Allow read-through caching to happen if it is confiured.
-                await _mirror.MirrorAsync(id, nugetVersion, CancellationToken.None);
+                await _mirror.MirrorAsync(pid, CancellationToken.None);
 
                 var package = await _mirror.FindAsync(new PackageIdentity(id, nugetVersion));
 
@@ -86,10 +88,10 @@ namespace BaGet.Controllers.Web.Registration
 
                 // Documentation: https://docs.microsoft.com/en-us/nuget/api/registration-base-url-resource
                 var result = new RegistrationLeaf(
-                    registrationUri: req.PackageRegistration(id, nugetVersion, "cache"),
+                    registrationUri: req.PackageRegistration(pid.Id, "cache"),
                     listed: package.IsListed,
                     downloads: package.DownloadCount.GetValueOrDefault(),
-                    packageContentUri: req.PackageDownload(id, nugetVersion, "cache"),
+                    packageContentUri: req.PackageDownload(pid, "cache"),
                     published: package.Published.GetValueOrDefault(),
                     registrationIndexUri: req.PackageRegistration(id, "cache"));
 
@@ -103,9 +105,9 @@ namespace BaGet.Controllers.Web.Registration
                 catalogEntry: new CatalogEntry(
                     package: package,
                     catalogUri: $"https://api.nuget.org/v3/catalog0/data/2015.02.01.06.24.15/{package.Identity.Id}.{package.Identity.Version}.json",
-                    packageContent: request.PackageDownload(package.Identity.Id, package.Identity.Version, "cache"),
+                    packageContent: request.PackageDownload(package.Identity, "cache"),
                     getRegistrationUrl: id => new System.Uri(request.PackageRegistration(id, "cache"))),
-                packageContent: request.PackageDownload(package.Identity.Id, package.Identity.Version, "cache"));
+                packageContent: request.PackageDownload(package.Identity, "cache"));
 
     }
 }

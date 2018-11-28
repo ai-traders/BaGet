@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace BaGet.Core.Services
@@ -22,7 +23,7 @@ namespace BaGet.Core.Services
                 output.Write("Importing package {0} ", file);
                 using (var uploadStream = File.OpenRead(file))
                 {
-                    var result = await _indexingService.IndexAsync(uploadStream);
+                    var result = await _indexingService.IndexAsync(uploadStream, CancellationToken.None);
                     output.WriteLine(result);
                 }
             }
