@@ -1,3 +1,10 @@
+### 0.3.0 - Unreleased
+
+Cherry-pick of upstream changes
+ * improve database search
+ * package deletion service with different behaviors
+ * refactoring of storage services and tests
+
 ### 0.2.1 (2018-Oct-22)
 
  * Fixed missing dependencies in V3 endpoints \#12
