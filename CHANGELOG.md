@@ -1,9 +1,11 @@
-### 0.3.0 - Unreleased
+### 0.3.0 (2018-Nov-29)
 
 Cherry-pick of upstream changes
  * improve database search
  * package deletion service with different behaviors
  * refactoring of storage services and tests
+
+Fix not returning unlisted packages in caching proxy.
 
 ### 0.2.1 (2018-Oct-22)
 
