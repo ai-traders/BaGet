@@ -45,7 +45,7 @@ namespace BaGet.Core.Mirror
 
         public async Task<IEnumerable<IPackageSearchMetadata>> FindUpstreamMetadataAsync(string id, CancellationToken ct) {
             //TODO: possibly cache response
-            return await _sourceRepository.GetMetadataAsync(id, true, false, ct);
+            return await _sourceRepository.GetMetadataAsync(id, true, true, ct);
         }
 
         public async Task<IReadOnlyList<string>> FindUpstreamAsync(string id, CancellationToken ct)

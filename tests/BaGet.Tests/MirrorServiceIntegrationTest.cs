@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using BaGet.Core;
@@ -50,6 +51,14 @@ namespace BaGet.Tests
             using(var stream = await mirrorService.GetPackageStreamAsync(log4netId)) {
                 
             }            
+        }
+
+        [Fact]
+        public async Task FindUpstreamMetadataAsyncShouldReturnUnlistedPackages() {
+            var result = await mirrorService.FindUpstreamMetadataAsync("fsharp.core", CancellationToken.None);
+            var versions = result.Select(r => r.Identity.Version);
+            Assert.Contains(versions, v => v.Equals(NuGetVersion.Parse("4.5.3")));
+            Assert.Contains(result, p => !p.IsListed);
         }
     }
 }

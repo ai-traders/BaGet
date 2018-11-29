@@ -27,3 +27,11 @@ load '/opt/bats-assert/load.bash'
   run /bin/bash -c "cat paket-constraint/paket.lock"
   assert_output --partial "(>="
 }
+
+@test "paket restore unlisted package" {
+  run /bin/bash -c "cd paket-unlisted && mono /ide/work/e2e/.paket/paket.exe restore"
+  refute_output --partial 'Could not download'
+  refute_output --partial "Failed to find relevant page in ''"
+  assert_equal "$status" 0
+  assert [ -e 'paket-unlisted/packages/fsharp.core/fsharp.core.4.5.3.nupkg' ]
+}

@@ -12,6 +12,7 @@ using System.Threading;
 using System.IO;
 using System.Collections.Generic;
 using BaGet.Core;
+using NuGet.Protocol.Core.Types;
 
 namespace BaGet.Tests
 {
@@ -42,6 +43,14 @@ namespace BaGet.Tests
                 .ReturnsAsync(new Uri("http://example.com/package/1"));
             client.Setup(c => c.GetRepository(options.UpstreamIndex)).Returns(sourceRepo.Object);
             mirrorService = new MirrorService(client.Object, localPackages.Object, downloader.Object, logger.CreateLogger<MirrorService>("MirrorServiceTest"), options);
+        }
+
+        [Fact]
+        public async Task FindUpstreamMetadataAsyncShouldReturnUnlistedPackages() {
+            sourceRepo.Setup(c => c.GetMetadataAsync(It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new IPackageSearchMetadata[0]);
+            var result = await mirrorService.FindUpstreamMetadataAsync("fsharp.core", CancellationToken.None);
+            sourceRepo.Verify(c => c.GetMetadataAsync("fsharp.core", true, true, CancellationToken.None), Times.Once());
         }
 
         [Fact]
